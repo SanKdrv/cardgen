@@ -342,6 +342,44 @@ def test_negative_claim_itself_is_allowed_when_present(
     assert "invented_negative_claim" not in codes(report)
 
 
+def test_absent_field_cannot_be_mentioned_as_fact(
+    partial_product: ProductInput, fixture_drafts: dict[str, Any]
+) -> None:
+    payload = copy.deepcopy(fixture_drafts[partial_product.name])
+    payload["seo_description"] += " Класс точности — 1,5."
+    report = check_draft(
+        partial_product,
+        build_facts(partial_product),
+        CardDraft.model_validate(payload),
+    )
+    assert "missing_field_mentioned" in codes(report)
+
+
+def test_absent_field_can_be_marked_as_no_data(
+    partial_product: ProductInput, fixture_drafts: dict[str, Any]
+) -> None:
+    payload = copy.deepcopy(fixture_drafts[partial_product.name])
+    payload["seo_description"] += " Класс точности — данных нет."
+    report = check_draft(
+        partial_product,
+        build_facts(partial_product),
+        CardDraft.model_validate(payload),
+    )
+    assert "missing_field_mentioned" not in codes(report)
+
+
+def test_verbatim_latin_power_supply_is_allowed(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    payload = copy.deepcopy(good_draft)
+    payload["key_specs"].append({"name": "питание", "value": "24VDC"})
+    payload["seo_description"] += " Питание — 24VDC."
+    powered = product.model_copy(update={"specs": {**product.specs, "питание": "24VDC"}})
+    report = check_draft(powered, build_facts(powered), CardDraft.model_validate(payload))
+    assert "unknown_unit" not in codes(report)
+    assert "invented_quantity" not in codes(report)
+
+
 def test_description_paragraph_count(product: ProductInput, good_draft: dict[str, Any]) -> None:
     paragraphs = good_draft["seo_description"].split("\n\n")
 

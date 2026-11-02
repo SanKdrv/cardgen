@@ -43,6 +43,15 @@ def test_build_facts_links_numbers_to_units(product: ProductInput) -> None:
     assert facts.quantities_in("диаметр 100 мм") == {("100", "мм")}
 
 
+def test_unit_declensions_are_normalized(product: ProductInput) -> None:
+    facts = build_facts(product)
+    assert facts.quantities_in("давление 1,6 бара") == {("1.6", "бар")}
+    assert facts.quantities_in("давление 1,6 атмосферы") == {("1.6", "атм")}
+    assert facts.quantities_in("давление 1,6 паскаля") == {("1.6", "па")}
+    assert facts.quantities_in("диаметр 100 сантиметров") == {("100", "см")}
+    assert facts.quantities_in("температура 70 градусов") == {("70", "°c")}
+
+
 def test_numbers_from_code_are_extracted(product: ProductInput) -> None:
     facts = build_facts(product)
     assert {"1", "2"} <= facts.numbers
@@ -86,6 +95,20 @@ def test_claim_negation_in_sentence_context() -> None:
     positive, negative = find_claim_polarities("Поставляется без сертификата.")
     assert "сертифик" in negative
     assert "сертифик" not in positive
+
+
+def test_claim_negation_does_not_capture_unrelated_words() -> None:
+    positive, _ = find_claim_polarities("Корпус изготавливается из стали, не требующей окраски.")
+    assert "стал" in positive
+    positive, _ = find_claim_polarities("Корпус не из пластика, а из стали.")
+    assert "стал" in positive
+
+
+def test_negation_without_ne_is_recognized() -> None:
+    _, negative = find_claim_polarities("Поверка отсутствует.")
+    assert "поверк" in negative
+    _, negative = find_claim_polarities("Работа с агрессивными средами запрещена.")
+    assert "агрессивн" in negative
 
 
 def test_detect_missing_fields_for_complete_product(product: ProductInput) -> None:

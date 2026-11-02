@@ -99,3 +99,20 @@ def test_template_sanitizes_markdown_and_punctuation() -> None:
     assert "в исходных данных" not in draft.seo_description
     paragraphs = [item for item in draft.seo_description.split("\n\n") if item.strip()]
     assert 2 <= len(paragraphs) <= 3
+
+
+def test_template_handles_multiline_passport_text() -> None:
+    product = ProductInput(
+        name="Прибор",
+        manufacturer="Завод",
+        specs={"диапазон измерений": "0–1,6 МПа"},
+        description=(
+            "НАЗНАЧЕНИЕ\n\nПрибор предназначен для измерения давления\n\n"
+            "КОМПЛЕКТНОСТЬ\n\nПрибор, паспорт"
+        ),
+    )
+    draft = build_template_draft(product, detect_missing_fields(product))
+    report = check_draft(product, build_facts(product), draft)
+    assert report.ok, report.violations
+    paragraphs = [item for item in draft.seo_description.split("\n\n") if item.strip()]
+    assert 2 <= len(paragraphs) <= 3

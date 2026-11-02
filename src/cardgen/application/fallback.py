@@ -63,7 +63,7 @@ def _build_title(product: ProductInput) -> str:
 
 
 def _first_sentences(text: str, limit: int) -> str:
-    text = text.strip()
+    text = " ".join(text.split())
     if not text:
         return ""
     sentences = _SENTENCE_SPLIT_RE.split(text)

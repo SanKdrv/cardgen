@@ -293,6 +293,23 @@ async def test_negative_source_cannot_be_turned_positive(
     assert "invented_claim" in {getattr(item, "code", "") for item in error.value.violations}
 
 
+async def test_absent_field_hallucination_never_leaks(
+    partial_product: ProductInput,
+    fixture_drafts: dict[str, Any],
+    settings: Settings,
+    scripted_factory: Callable[[list[str | Exception]], ScriptedProvider],
+) -> None:
+    payload = _copy(fixture_drafts[partial_product.name])
+    payload["seo_description"] += " Класс точности — 1,5."
+    provider = scripted_factory([_raw(payload)])
+    result = await _generator(provider, settings).generate(partial_product)
+
+    assert result.meta.fallback_used is True
+    assert result.meta.validation.ok is True
+    assert "Класс точности — 1,5" not in result.draft.seo_description
+    assert any("missing_field_mentioned" in warning for warning in result.warnings)
+
+
 def test_equivalent_latin_unit_is_not_rejected(product: ProductInput, good_draft: Draft) -> None:
     payload = _copy(good_draft)
     payload["seo_description"] += " Диаметр корпуса — 100 mm."

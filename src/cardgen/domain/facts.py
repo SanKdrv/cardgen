@@ -43,6 +43,16 @@ _UNIT_VALUES = (
     "м3/ч",
     "л/мин",
     "об/мин",
+    "мегапаскал",
+    "килопаскал",
+    "атмосфер",
+    "паскал",
+    "сантиметр",
+    "миллиметр",
+    "градус",
+    "процент",
+    "метр",
+    "литр",
     "мпа",
     "кпа",
     "гпа",
@@ -111,12 +121,41 @@ _UNIT_VALUES = (
     "l",
     "ml",
 )
+_UNIT_SUFFIX = r"(?:ов|ев|ей|ами|ах|ам|ом|а|ы|у|е|и|я|ю)?"
 _UNIT_ALTERNATION = "|".join(
     re.escape(unit) for unit in sorted(_UNIT_VALUES, key=len, reverse=True)
 )
-_UNIT_RE = re.compile(rf"(?<![a-zа-я])(?:{_UNIT_ALTERNATION})(?![a-zа-я])", re.IGNORECASE)
-_QUANTITY_RE = re.compile(rf"(\d+(?:[.,]\d+)?)\s*({_UNIT_ALTERNATION})(?![a-zа-я])", re.IGNORECASE)
+_UNIT_RE = re.compile(
+    rf"(?<![a-zа-я])(?:{_UNIT_ALTERNATION}){_UNIT_SUFFIX}(?![a-zа-я])",
+    re.IGNORECASE,
+)
+_QUANTITY_RE = re.compile(
+    rf"(\d+(?:[.,]\d+)?)\s*((?:{_UNIT_ALTERNATION}){_UNIT_SUFFIX})(?![a-zа-я])",
+    re.IGNORECASE,
+)
+_KNOWN_UNIT_ROOTS = {
+    "атмосфер": "атм",
+    "паскал": "па",
+    "мегапаскал": "мпа",
+    "килопаскал": "кпа",
+    "сантиметр": "см",
+    "миллиметр": "мм",
+    "градус": "°c",
+    "процент": "%",
+    "метр": "м",
+    "дюйм": "дюйм",
+    "фунт": "фунт",
+    "литр": "л",
+    "бар": "бар",
+    "мпа": "мпа",
+    "кпа": "кпа",
+    "па": "па",
+    "мм": "мм",
+    "см": "см",
+    "м": "м",
+}
 KNOWN_UNITS = frozenset(unit.lower() for unit in _UNIT_VALUES)
+_UNIT_STEM_SUFFIX_RE = re.compile(r"(?:ов|ев|ей|ами|ах|ам|ом|а|ы|у|е|и|я|ю)$")
 
 _BENIGN_CODES = {"b2b", "b2c", "b2g"}
 BENIGN_CODES = frozenset(_BENIGN_CODES)
@@ -286,7 +325,18 @@ def _normalize_unit(value: str) -> str:
         "l": "л",
         "ml": "мл",
     }
-    return aliases.get(unit, unit.replace(" ", ""))
+    if unit in aliases:
+        return aliases[unit]
+    if unit in _KNOWN_UNIT_ROOTS:
+        return _KNOWN_UNIT_ROOTS[unit]
+    stem = _UNIT_STEM_SUFFIX_RE.sub("", unit)
+    if stem != unit:
+        if stem in aliases:
+            return aliases[stem]
+        if stem in _KNOWN_UNIT_ROOTS:
+            return _KNOWN_UNIT_ROOTS[stem]
+        return stem
+    return unit.replace(" ", "")
 
 
 def _segment_quantity_pairs(segment: str) -> set[tuple[str, str]]:
@@ -377,10 +427,16 @@ def find_claim_polarities(text: str) -> tuple[set[str], set[str]]:
                 -1
             ]
             after = re.split(r"[.;:!?]", normalized[match.end() : match.end() + 40])[0]
-            negated = (
-                bool(re.search(r"\bне\b|\bбез\b", before))
-                or before.rstrip().endswith("не")
-                or bool(re.search(r"\bне\b", after))
+            negated = bool(
+                re.search(r"\bне\s*$", before)
+                or re.search(r"\bне\s+(?:\w+\s+){0,2}$", before)
+                or re.search(r"\bбез\s+(?:\w+\s+){0,2}$", before)
+                or re.search(
+                    r"\bне\s+(?:требуется|проводится|предусмотрен\w*|"
+                    r"допускается|предусматривается)\b",
+                    after,
+                )
+                or re.search(r"\b(?:отсутству\w*|запрещ\w*|не\s+допуска\w*)\b", after)
             )
             (negative if negated else positive).add(stem)
     return positive, negative

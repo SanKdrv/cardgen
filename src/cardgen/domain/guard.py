@@ -11,6 +11,7 @@ from .facts import (
     canonical,
     claim_name,
     compact,
+    detect_missing_fields,
     find_claim_polarities,
 )
 from .models import CardDraft, GuardReport, GuardViolation, ProductInput
@@ -52,6 +53,17 @@ _ATTRIBUTE_ALIASES: dict[str, tuple[str, ...]] = {
     "интерфейс": ("интерфейс", "протокол"),
     "выходной сигнал": ("выход", "сигнал"),
 }
+_GENERIC_MISSING = frozenset({"технические характеристики", "назначение и область применения"})
+_MISSING_ALLOWED_MARKERS = (
+    "данных нет",
+    "нет данных",
+    "не указан",
+    "не указана",
+    "не указаны",
+    "отсутств",
+    "уточните",
+    "уточнить",
+)
 
 
 def _add(violations: list[GuardViolation], code: str, field: str, message: str) -> None:
@@ -247,7 +259,11 @@ def _check_invented_tokens(
                 invented_quantities.setdefault(f"{number} {unit}", set()).add(field)
         for match in _LATIN_UNIT_RE.finditer(text):
             unit = canonical(match.group(2))
-            if unit not in KNOWN_UNITS and unit not in _NON_UNIT_LATIN:
+            if (
+                unit not in KNOWN_UNITS
+                and unit not in _NON_UNIT_LATIN
+                and unit not in facts.compact_text
+            ):
                 invented_units.setdefault(unit, set()).add(field)
 
     reported: set[str] = set()
@@ -406,6 +422,68 @@ def _check_attribute_numbers(
                     )
 
 
+def _field_patterns(field: str) -> list[str]:
+    normalized = canonical(field)
+    patterns = [normalized]
+    for target, aliases in _ATTRIBUTE_ALIASES.items():
+        if target in normalized:
+            patterns.extend(aliases)
+    return list(dict.fromkeys(patterns))
+
+
+def _check_missing_field_mentions(
+    product: ProductInput,
+    draft: CardDraft,
+    violations: list[GuardViolation],
+    already_reported: set[str],
+) -> None:
+    """Нельзя упоминать характеристику как факт, если её нет в specs.
+
+    Отдельно разрешены явные пометки «данных нет», «не указан» и
+    «уточните»: именно так должен выглядеть честный пропуск.
+    """
+    description = canonical(product.description)
+    texts = {
+        "seo_title": draft.seo_title,
+        "seo_description": draft.seo_description,
+        "commercial_block": draft.commercial_block,
+        "search_queries": " \n ".join(draft.search_queries),
+    }
+
+    for item in detect_missing_fields(product):
+        field = item.field
+        if field in _GENERIC_MISSING:
+            continue
+        patterns = _field_patterns(field)
+        if any(pattern in description for pattern in patterns):
+            continue
+        for source_field, text in texts.items():
+            normalized = canonical(text)
+            if "уточните" in normalized or "уточнить" in normalized:
+                continue
+            for pattern in patterns:
+                boundary_pattern = rf"(?<![а-яёa-z0-9]){re.escape(pattern)}(?![а-яёa-z0-9])"
+                for match in re.finditer(boundary_pattern, normalized):
+                    prefix = normalized[max(0, match.start() - 50) : match.start()]
+                    tail = normalized[match.end() : match.end() + 50]
+                    context = f"{prefix} {tail}"
+                    if any(marker in context for marker in _MISSING_ALLOWED_MARKERS):
+                        continue
+                    token = f"missing:{field}"
+                    if token in already_reported:
+                        break
+                    already_reported.add(token)
+                    _add(
+                        violations,
+                        "missing_field_mentioned",
+                        source_field,
+                        f"характеристика «{field}» отсутствует во входе, " "но упомянута в тексте",
+                    )
+                    break
+                if f"missing:{field}" in already_reported:
+                    break
+
+
 def _check_claims(
     facts: FactTable,
     draft: CardDraft,
@@ -475,6 +553,7 @@ def check_draft(product: ProductInput, facts: FactTable, draft: CardDraft) -> Gu
     reported = _check_invented_tokens(facts, draft, violations)
     _check_attribute_numbers(product, facts, draft, violations, reported)
     _check_claims(facts, draft, violations, reported)
+    _check_missing_field_mentions(product, draft, violations, reported)
     _check_markdown(draft, violations)
 
     stats: dict[str, int | float | str] = {
