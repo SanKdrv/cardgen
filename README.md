@@ -17,8 +17,10 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 140 тестов, покрытие 90% |
+| Тесты | 142 теста, покрытие 90% |
 | Зависимости | без LangChain и SDK провайдеров |
+
+![Веб-форма с загруженным демо-товаром](docs/screenshot-index.png)
 
 ---
 
@@ -48,6 +50,8 @@
 | Манометр DM 02 | [Markdown](examples/output/01-manometr-pokazyvayuschiy-dm-02.md) · [JSON](examples/output/01-manometr-pokazyvayuschiy-dm-02.json) | полный набор данных |
 | Термометр ТБ-1 | [Markdown](examples/output/02-termometr-bimetallicheskiy-tb-1.md) · [JSON](examples/output/02-termometr-bimetallicheskiy-tb-1.json) | нет класса точности — сервис явно пишет об этом |
 
+![Страница результата](docs/screenshot-result.png)
+
 Примеры зафиксированы в офлайн-режиме `CARDGEN_PROVIDER=fixture`: их можно
 воспроизвести без ключа и сети. С реальным ключом тот же пайплайн делает
 живой запрос к модели — команда ниже.
@@ -71,6 +75,9 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 cp .env.example .env               # Windows: copy .env.example .env
 # заполните CARDGEN_API_KEY
+pre-commit install --install-hooks
+pre-commit install --hook-type commit-msg
+pre-commit install --hook-type pre-push
 uvicorn cardgen.api:app --reload
 ```
 
@@ -272,6 +279,7 @@ curl -s http://127.0.0.1:8000/api/v1/cards \
 `GET /` — форма для контент-менеджера:
 
 - загрузка одного из демо-товаров;
+- прямая ссылка на демо: `/?example=0`;
 - динамическое добавление характеристик;
 - счётчик символов описания;
 - результат с длинами полей, пропусками и предупреждениями;
@@ -328,7 +336,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 140 тестов, включая smoke
+pytest                          # 142 теста, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .
