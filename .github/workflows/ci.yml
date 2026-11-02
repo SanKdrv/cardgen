@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Линтеры, типы и тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Установить зависимости
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Mypy
+        run: mypy src
+      - name: Тесты с покрытием
+        run: pytest --cov=cardgen --cov-report=term-missing
+      - name: Проверка конфигурации офлайн-режима
+        env:
+          CARDGEN_PROVIDER: fixture
+        run: cardgen check-config
+
+  docker:
+    name: Сборка образа
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Собрать Docker-образ
+        run: docker build -t cardgen:ci .

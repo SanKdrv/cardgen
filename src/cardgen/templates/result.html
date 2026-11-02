@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}{{ result.product.name }} — черновик карточки{% endblock %}
+
+{% block content %}
+<section class="result-head">
+  <div>
+    <p class="eyebrow">Черновик готов · проверка {{ "пройдена" if result.meta.validation.ok else "не пройдена" }}</p>
+    <h1>{{ result.product.name }}</h1>
+    <p class="lede lede-small">
+      {{ result.product.manufacturer }}{% if result.product.category %} · {{ result.product.category }}{% endif %}
+      · {{ result.meta.provider }} / {{ result.meta.model }}
+    </p>
+  </div>
+  <div class="result-actions">
+    <a class="btn btn-ghost" href="/">← Новая карточка</a>
+    <button type="button" class="btn btn-primary" data-copy-target="markdown-data">
+      Скопировать всё (Markdown)
+    </button>
+  </div>
+</section>
+
+{% if result.meta.fallback_used %}
+<div class="alert alert-warn" role="status">
+  <strong>Работал безопасный шаблон.</strong>
+  {{ result.meta.fallback_reason }} — тексты собраны детерминированно, без обращения к модели.
+</div>
+{% endif %}
+
+{% if result.missing_fields %}
+<div class="alert alert-warn" role="status">
+  <strong>Не хватает данных ({{ result.missing_fields | length }}):</strong>
+  <ul class="inline-list">
+    {% for item in result.missing_fields %}
+      <li><b>{{ item.field }}</b> — {{ item.hint }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if result.warnings %}
+<div class="alert alert-info" role="status">
+  <ul class="inline-list">
+    {% for warning in result.warnings %}<li>{{ warning }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="result-grid">
+  <article class="card card-wide">
+    <div class="card-head">
+      <h2>SEO-заголовок</h2>
+      <span class="pill">{{ result.draft.seo_title | length }} / 70</span>
+    </div>
+    <div class="copy-block">
+      <p class="title-text" id="title-text">{{ result.draft.seo_title }}</p>
+      <button type="button" class="btn btn-ghost btn-small" data-copy-target="title-text">Копировать</button>
+    </div>
+  </article>
+
+  <article class="card card-wide">
+    <div class="card-head">
+      <h2>SEO-описание</h2>
+      <span class="pill">{{ result.draft.seo_description | length }} символов</span>
+    </div>
+    <div class="copy-block copy-block-top">
+      <p class="description-text" id="description-text">{{ result.draft.seo_description }}</p>
+      <button type="button" class="btn btn-ghost btn-small" data-copy-target="description-text">Копировать</button>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <h2>Характеристики</h2>
+      <span class="pill">{{ result.draft.key_specs | length }}</span>
+    </div>
+    <table class="spec-table">
+      <tbody>
+        {% for item in result.draft.key_specs %}
+          <tr>
+            <th scope="row">{{ item.name }}</th>
+            <td>{{ item.value }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <div class="card-head">
+      <h2>Поисковые запросы</h2>
+      <span class="pill">{{ result.draft.search_queries | length }}</span>
+    </div>
+    <ul class="chips" id="queries-text">
+      {% for query in result.draft.search_queries %}<li>{{ query }}</li>{% endfor %}
+    </ul>
+    <button type="button" class="btn btn-ghost btn-small" data-copy-target="queries-text">Копировать запросы</button>
+  </article>
+
+  <article class="card card-wide">
+    <div class="card-head">
+      <h2>Коммерческий блок для менеджера</h2>
+      <span class="pill">{{ result.draft.commercial_block | length }} символов</span>
+    </div>
+    <div class="copy-block copy-block-top">
+      <p class="commercial-text" id="commercial-text">{{ result.draft.commercial_block }}</p>
+      <button type="button" class="btn btn-ghost btn-small" data-copy-target="commercial-text">Копировать</button>
+    </div>
+  </article>
+</div>
+
+<section class="download-row">
+  <button type="button" class="btn btn-primary" data-copy-target="json-data">Копировать JSON</button>
+  <button type="button" class="btn btn-ghost" data-download="json">Скачать JSON</button>
+  <button type="button" class="btn btn-ghost" data-download="markdown">Скачать Markdown</button>
+</section>
+
+<details class="meta">
+  <summary>Служебная информация и JSON</summary>
+  <dl class="meta-grid">
+    <div><dt>Провайдер</dt><dd>{{ result.meta.provider }}</dd></div>
+    <div><dt>Модель</dt><dd>{{ result.meta.model }}</dd></div>
+    <div><dt>Попыток к LLM</dt><dd>{{ result.meta.attempts }}</dd></div>
+    <div><dt>Задержка</dt><dd>{{ result.meta.latency_ms }} мс</dd></div>
+    <div><dt>Версия промпта</dt><dd>{{ result.meta.prompt_version }}</dd></div>
+    <div><dt>Fallback</dt><dd>{{ result.meta.fallback_reason or "нет" }}</dd></div>
+    <div><dt>Нарушений проверки</dt><dd>{{ result.meta.validation.violations | length }}</dd></div>
+    <div><dt>Длина описания</dt><dd>{{ result.draft.seo_description | length }} / 1200</dd></div>
+  </dl>
+  <pre class="json-preview">{{ json_text }}</pre>
+</details>
+
+<textarea id="json-data" class="hidden-source" readonly>{{ json_text }}</textarea>
+<textarea id="markdown-data" class="hidden-source" readonly>{{ markdown_text }}</textarea>
+{% endblock %}
