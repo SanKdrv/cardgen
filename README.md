@@ -396,6 +396,10 @@ Pre-commit-хуки: `ruff`, `ruff-format`, `mypy`, unit-тесты, прове�
 сообщения коммита (Conventional Commits + русское тело). На `pre-push`
 запускаются unit + integration.
 
+CI: Ubuntu (линтеры, типы, 253 теста, coverage), Windows smoke (полный
+`pytest`) и Docker-job, который собирает образ, поднимает контейнер и
+проверяет health + генерацию карточки.
+
 ---
 
 ## Docker
@@ -408,6 +412,11 @@ docker compose up --build
 Образ: `python:3.12-slim`, непривилегированный пользователь, healthcheck
 на `/health`. Для локальной модели в compose достаточно поменять
 `CARDGEN_BASE_URL` на адрес Ollama/vLLM.
+
+Проверено локально на Linux-контейнере и Windows-хосте: healthcheck
+`healthy`, API и форма отвечают, fixture-режим создаёт 17/17 карточек.
+CI дополнительно собирает образ, запускает контейнер и проверяет `/health`,
+`POST /api/v1/cards` и `/api/v1/examples`.
 
 ---
 
