@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from ...core.errors import ConfigurationError
 from ..config import Settings
-from ..errors import ConfigurationError
 from .base import LLMProvider
 from .fixture import FixtureProvider
 from .openai_compat import OpenAICompatibleProvider

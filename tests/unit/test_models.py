@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from cardgen.models import CardDraft, ProductInput
+from cardgen.domain.models import CardDraft, ProductInput
 
 
 def test_product_input_normalizes_text_and_specs() -> None:

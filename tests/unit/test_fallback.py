@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from cardgen.facts import build_facts, detect_missing_fields
-from cardgen.fallback import build_template_draft
-from cardgen.guard import (
+from cardgen.application.fallback import build_template_draft
+from cardgen.domain.facts import build_facts, detect_missing_fields
+from cardgen.domain.guard import (
     COMMERCIAL_MAX,
     COMMERCIAL_MIN,
     DESCRIPTION_MAX,
@@ -12,7 +12,7 @@ from cardgen.guard import (
     TITLE_MAX,
     check_draft,
 )
-from cardgen.models import ProductInput
+from cardgen.domain.models import ProductInput
 
 
 def test_template_passes_guard_for_demo_products(

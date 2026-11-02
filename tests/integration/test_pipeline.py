@@ -7,14 +7,14 @@ from typing import Any
 
 import pytest
 
-from cardgen.config import Settings
-from cardgen.errors import LLMUnavailableError, ValidationFailedError
-from cardgen.facts import detect_missing_fields
-from cardgen.fallback import build_template_draft
-from cardgen.llm.fixture import FixtureProvider
-from cardgen.llm.template import TemplateProvider
-from cardgen.models import CardDraft, GenerateOptions, ProductInput
-from cardgen.pipeline import CardGenerator
+from cardgen.application.fallback import build_template_draft
+from cardgen.application.pipeline import CardGenerator
+from cardgen.core.errors import LLMUnavailableError, ValidationFailedError
+from cardgen.domain.facts import detect_missing_fields
+from cardgen.domain.models import CardDraft, GenerateOptions, ProductInput
+from cardgen.infrastructure.config import Settings
+from cardgen.infrastructure.llm.fixture import FixtureProvider
+from cardgen.infrastructure.llm.template import TemplateProvider
 
 from ..conftest import ScriptedProvider
 
@@ -208,6 +208,8 @@ async def test_invalid_fallback_is_fail_closed(
         search_queries=["один"],
         commercial_block="мало",
     )
-    monkeypatch.setattr("cardgen.pipeline.build_template_draft", lambda _product, _missing: invalid)
+    monkeypatch.setattr(
+        "cardgen.application.pipeline.build_template_draft", lambda _product, _missing: invalid
+    )
     with pytest.raises(ValidationFailedError):
         await make_generator(provider, settings).generate(product)

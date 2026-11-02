@@ -14,12 +14,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from . import __version__
-from .config import Settings
-from .errors import CardgenError
-from .llm import build_provider
-from .models import CardResult, GenerateOptions, ProductInput
-from .pipeline import CardGenerator
+from .. import __version__
+from ..application.pipeline import CardGenerator
+from ..core.errors import CardgenError
+from ..domain.models import CardResult, GenerateOptions, ProductInput
+from ..infrastructure.config import Settings
+from ..infrastructure.llm import build_provider
 
 logger = logging.getLogger(__name__)
 

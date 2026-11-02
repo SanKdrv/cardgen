@@ -8,10 +8,10 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from cardgen.api import create_app
-from cardgen.config import Settings
-from cardgen.errors import LLMUnavailableError
-from cardgen.llm.fixture import FixtureProvider
-from cardgen.llm.openai_compat import OpenAICompatibleProvider
+from cardgen.core.errors import LLMUnavailableError
+from cardgen.infrastructure.config import Settings
+from cardgen.infrastructure.llm.fixture import FixtureProvider
+from cardgen.infrastructure.llm.openai_compat import OpenAICompatibleProvider
 
 from ..conftest import ScriptedProvider
 

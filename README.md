@@ -20,7 +20,7 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 158 тестов, покрытие 90% |
+| Тесты | 206 тестов, покрытие 90% |
 | Зависимости | без LangChain и SDK провайдеров |
 
 ![Веб-форма с загруженным демо-товаром](docs/screenshot-index.png)
@@ -165,16 +165,16 @@ CARDGEN_SESSION_HEADER=
 ```text
 Браузер / CLI / API
         │
-   FastAPI (api.py)
+   presentation/api (роутеры)
         │
-   CardGenerator (pipeline.py)
-        ├── facts.py       факты, числа, коды, список пропусков
-        ├── prompts.py     system / user / correction
-        ├── LLMProvider    openai-compatible / fixture / template
-        ├── guard.py       проверка ответа
-        └── fallback.py    безопасный шаблон
+   application/pipeline (CardGenerator)
+        ├── domain/facts       факты, числа, коды, пропуски
+        ├── application/prompts system / user / correction
+        ├── infrastructure/llm openai-compatible / fixture / template
+        ├── domain/guard       проверка ответа
+        └── application/fallback безопасный шаблон
         │
-   render.py → JSON + Markdown
+   application/render → JSON + Markdown
 ```
 
 1. **Вход валидируется** Pydantic-моделью: пустые поля, вложенные значения
@@ -352,7 +352,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 158 тестов, включая smoke
+pytest                          # 206 тестов, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .
@@ -389,20 +389,36 @@ docker compose up --build
 
 ```text
 src/cardgen/
-  api.py          FastAPI, форма, обработчики ошибок
-  cli.py          generate / serve / check-config
-  config.py       настройки CARDGEN_*
-  models.py       Pydantic-схемы
-  facts.py        нормализация и пропуски
-  prompts.py      версионируемые промпты
-  guard.py        анти-галлюцинационная проверка
-  fallback.py     безопасный шаблон
-  pipeline.py     оркестрация и ретраи
-  render.py       Markdown
-  llm/            провайдеры и разбор ответа
-  templates/      Jinja2-страницы
-  static/         CSS и JS
-  data/           демо-товары и офлайн-ответы
+  api.py                    совместимый вход cardgen.api:app
+  __main__.py               python -m cardgen
+  core/
+    errors.py               исключения приложения
+  domain/
+    models.py               Pydantic-схемы
+    facts.py                нормализация и пропуски
+    guard.py                анти-галлюцинационная проверка
+  application/
+    prompts.py              версионируемые промпты
+    pipeline.py             оркестрация и ретраи
+    fallback.py             безопасный шаблон
+    render.py               Markdown
+  infrastructure/
+    config.py               настройки CARDGEN_*
+    llm/                    провайдеры и разбор ответа
+  presentation/
+    api/
+      app.py                сборка FastAPI
+      dependencies.py       доступ к состоянию приложения
+      errors.py             обработчики ошибок
+      examples.py           демо-товары
+      routes/
+        cards.py            JSON API
+        health.py           /health и /examples
+        ui.py               веб-форма
+    cli.py                  generate / serve / check-config
+    templates/              Jinja2-страницы
+    static/                 CSS и JS
+  data/                     демо-товары и офлайн-ответы
 tests/
   unit/ integration/ smoke/
 docs/

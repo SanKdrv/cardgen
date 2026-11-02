@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..errors import LLMUnavailableError
+from ...core.errors import LLMUnavailableError
 
 
 class TemplateProvider:

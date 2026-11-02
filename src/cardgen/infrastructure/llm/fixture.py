@@ -7,11 +7,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from ..errors import LLMResponseError
+from ...core.errors import LLMResponseError
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_FIXTURE_PATH = Path(__file__).resolve().parent.parent / "data" / "fixtures.json"
+DEFAULT_FIXTURE_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "fixtures.json"
 
 
 class FixtureProvider:

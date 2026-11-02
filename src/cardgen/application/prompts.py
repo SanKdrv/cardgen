@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from .guard import (
+from ..domain.guard import (
     COMMERCIAL_MAX,
     COMMERCIAL_MIN,
     DESCRIPTION_MAX,
@@ -14,7 +14,7 @@ from .guard import (
     TITLE_MAX,
     summarize_violations,
 )
-from .models import GuardViolation, MissingField, ProductInput
+from ..domain.models import GuardViolation, MissingField, ProductInput
 
 PROMPT_VERSION = "2026-11-02.2"
 

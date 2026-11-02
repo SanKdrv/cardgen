@@ -15,8 +15,8 @@ from typing import Any
 
 import httpx
 
-from .. import __version__
-from ..errors import (
+from ... import __version__
+from ...core.errors import (
     LLMAuthError,
     LLMError,
     LLMRateLimitError,

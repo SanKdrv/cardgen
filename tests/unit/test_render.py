@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from cardgen.facts import build_facts, detect_missing_fields
-from cardgen.fallback import build_template_draft
-from cardgen.guard import check_draft
-from cardgen.models import CardDraft, CardMeta, CardResult, KeySpecItem, MissingField, ProductInput
-from cardgen.render import to_markdown
+from cardgen.application.fallback import build_template_draft
+from cardgen.application.render import to_markdown
+from cardgen.domain.facts import build_facts, detect_missing_fields
+from cardgen.domain.guard import check_draft
+from cardgen.domain.models import (
+    CardDraft,
+    CardMeta,
+    CardResult,
+    KeySpecItem,
+    MissingField,
+    ProductInput,
+)
 
 
 def build_result(product: ProductInput) -> CardResult:

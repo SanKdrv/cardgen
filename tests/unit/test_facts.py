@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from cardgen.facts import (
+from cardgen.domain.facts import (
     build_facts,
     canonical,
     compact,
@@ -9,7 +9,7 @@ from cardgen.facts import (
     infer_category,
     required_fields_for,
 )
-from cardgen.models import ProductInput
+from cardgen.domain.models import ProductInput
 
 
 def test_canonical_normalizes_dashes_commas_and_yo() -> None:

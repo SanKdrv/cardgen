@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from cardgen.models import GuardViolation, MissingField, ProductInput
-from cardgen.prompts import (
+from cardgen.application.prompts import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,
     build_correction_prompt,
     build_user_prompt,
 )
+from cardgen.domain.models import GuardViolation, MissingField, ProductInput
 
 
 def test_system_prompt_contains_hard_rules() -> None:

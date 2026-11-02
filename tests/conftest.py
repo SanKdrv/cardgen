@@ -7,9 +7,9 @@ from typing import Any
 
 import pytest
 
-from cardgen.config import Settings
-from cardgen.llm.fixture import FixtureProvider
-from cardgen.models import ProductInput
+from cardgen.domain.models import ProductInput
+from cardgen.infrastructure.config import Settings
+from cardgen.infrastructure.llm.fixture import FixtureProvider
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO_PATH = ROOT / "src" / "cardgen" / "data" / "demo_products.json"

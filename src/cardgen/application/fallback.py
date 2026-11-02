@@ -8,8 +8,14 @@ from __future__ import annotations
 
 import re
 
-from .guard import COMMERCIAL_MAX, COMMERCIAL_MIN, DESCRIPTION_MAX, DESCRIPTION_MIN, TITLE_MAX
-from .models import CardDraft, KeySpecItem, MissingField, ProductInput
+from ..domain.guard import (
+    COMMERCIAL_MAX,
+    COMMERCIAL_MIN,
+    DESCRIPTION_MAX,
+    DESCRIPTION_MIN,
+    TITLE_MAX,
+)
+from ..domain.models import CardDraft, KeySpecItem, MissingField, ProductInput
 
 _SAFE_SENTENCES = (
     "Информация в карточке опирается только на переданные технические данные.",

@@ -3,9 +3,9 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from cardgen.facts import build_facts
-from cardgen.guard import check_draft, summarize_violations
-from cardgen.models import CardDraft, GuardViolation, ProductInput
+from cardgen.domain.facts import build_facts
+from cardgen.domain.guard import check_draft, summarize_violations
+from cardgen.domain.models import CardDraft, GuardViolation, ProductInput
 
 
 def make_draft(good_draft: dict[str, Any]) -> CardDraft:

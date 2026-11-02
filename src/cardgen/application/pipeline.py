@@ -5,14 +5,10 @@ from __future__ import annotations
 import logging
 import time
 
-from .config import Settings, get_settings
-from .errors import DraftParseError, LLMError, ValidationFailedError
-from .facts import build_facts, detect_missing_fields
-from .fallback import build_template_draft
-from .guard import check_draft, summarize_violations
-from .llm.base import LLMProvider
-from .llm.parse import parse_draft
-from .models import (
+from ..core.errors import DraftParseError, LLMError, ValidationFailedError
+from ..domain.facts import build_facts, detect_missing_fields
+from ..domain.guard import check_draft, summarize_violations
+from ..domain.models import (
     CardMeta,
     CardResult,
     GenerateOptions,
@@ -20,6 +16,10 @@ from .models import (
     GuardViolation,
     ProductInput,
 )
+from ..infrastructure.config import Settings, get_settings
+from ..infrastructure.llm.base import LLMProvider
+from ..infrastructure.llm.parse import parse_draft
+from .fallback import build_template_draft
 from .prompts import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,

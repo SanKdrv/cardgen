@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from .guard import DESCRIPTION_MAX, DESCRIPTION_MIN, TITLE_MAX
-from .models import CardResult
+from ..domain.guard import DESCRIPTION_MAX, DESCRIPTION_MIN, TITLE_MAX
+from ..domain.models import CardResult
 
 
 def _escape_cell(value: str) -> str:

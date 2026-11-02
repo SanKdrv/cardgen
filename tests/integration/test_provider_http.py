@@ -6,14 +6,14 @@ from typing import Any
 import httpx
 import pytest
 
-from cardgen.errors import (
+from cardgen.core.errors import (
     LLMAuthError,
     LLMRateLimitError,
     LLMResponseError,
     LLMTimeoutError,
     LLMUnavailableError,
 )
-from cardgen.llm.openai_compat import OpenAICompatibleProvider
+from cardgen.infrastructure.llm.openai_compat import OpenAICompatibleProvider
 
 
 def make_provider(client: httpx.AsyncClient, **overrides: Any) -> OpenAICompatibleProvider:

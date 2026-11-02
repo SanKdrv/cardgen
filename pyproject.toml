@@ -40,13 +40,13 @@ dev = [
 ]
 
 [project.scripts]
-cardgen = "cardgen.cli:main"
+cardgen = "cardgen.presentation.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-cardgen = ["templates/*.html", "static/*", "data/*.json"]
+cardgen = ["presentation/templates/*.html", "presentation/static/*", "data/*.json"]
 
 [tool.ruff]
 line-length = 100

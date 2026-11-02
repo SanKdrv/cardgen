@@ -7,13 +7,13 @@ from typing import Any
 
 import pytest
 
-from cardgen.config import Settings
-from cardgen.errors import ValidationFailedError
-from cardgen.facts import build_facts, detect_missing_fields
-from cardgen.fallback import build_template_draft
-from cardgen.guard import check_draft
-from cardgen.models import CardDraft, GenerateOptions, ProductInput
-from cardgen.pipeline import CardGenerator
+from cardgen.application.fallback import build_template_draft
+from cardgen.application.pipeline import CardGenerator
+from cardgen.core.errors import ValidationFailedError
+from cardgen.domain.facts import build_facts, detect_missing_fields
+from cardgen.domain.guard import check_draft
+from cardgen.domain.models import CardDraft, GenerateOptions, ProductInput
+from cardgen.infrastructure.config import Settings
 
 from ..conftest import ScriptedProvider
 
