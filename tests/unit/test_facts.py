@@ -111,6 +111,15 @@ def test_negation_without_ne_is_recognized() -> None:
     assert "агрессивн" in negative
 
 
+def test_long_negation_is_recognized() -> None:
+    _, negative = find_claim_polarities(
+        "Прибор не предназначен для эксплуатации в агрессивных средах."
+    )
+    assert "агрессивн" in negative
+    _, negative = find_claim_polarities("Не допускается применение в пищевой промышленности.")
+    assert "пищев" in negative
+
+
 def test_detect_missing_fields_for_complete_product(product: ProductInput) -> None:
     assert detect_missing_fields(product) == []
 
@@ -174,6 +183,8 @@ def test_placeholder_values_are_treated_as_missing() -> None:
             "питание": "unknown",
             "интерфейс": "??",
             "материал корпуса": "xxx",
+            "погрешность": "не нормируется",
+            "температура": "tbd",
         },
     )
     assert product.specs == {"диапазон измерений": "0–1,6 МПа"}

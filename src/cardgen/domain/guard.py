@@ -54,16 +54,6 @@ _ATTRIBUTE_ALIASES: dict[str, tuple[str, ...]] = {
     "выходной сигнал": ("выход", "сигнал"),
 }
 _GENERIC_MISSING = frozenset({"технические характеристики", "назначение и область применения"})
-_MISSING_ALLOWED_MARKERS = (
-    "данных нет",
-    "нет данных",
-    "не указан",
-    "не указана",
-    "не указаны",
-    "отсутств",
-    "уточните",
-    "уточнить",
-)
 
 
 def _add(violations: list[GuardViolation], code: str, field: str, message: str) -> None:
@@ -459,15 +449,25 @@ def _check_missing_field_mentions(
             continue
         for source_field, text in texts.items():
             normalized = canonical(text)
-            if "уточните" in normalized or "уточнить" in normalized:
-                continue
             for pattern in patterns:
                 boundary_pattern = rf"(?<![а-яёa-z0-9]){re.escape(pattern)}(?![а-яёa-z0-9])"
                 for match in re.finditer(boundary_pattern, normalized):
-                    prefix = normalized[max(0, match.start() - 50) : match.start()]
-                    tail = normalized[match.end() : match.end() + 50]
-                    context = f"{prefix} {tail}"
-                    if any(marker in context for marker in _MISSING_ALLOWED_MARKERS):
+                    prefix = re.split(r"[.!?]", normalized[: match.start()])[-1]
+                    tail = normalized[match.end() : match.end() + 80]
+                    has_value = bool(re.search(r"\d", tail))
+                    explicit_unknown = any(
+                        marker in prefix or marker in tail
+                        for marker in (
+                            "данных нет",
+                            "нет данных",
+                            "не указан",
+                            "не указана",
+                            "не указаны",
+                            "отсутств",
+                        )
+                    )
+                    asks_for_clarification = "уточните" in prefix or "уточнить" in prefix
+                    if not has_value and (explicit_unknown or asks_for_clarification):
                         continue
                     token = f"missing:{field}"
                     if token in already_reported:

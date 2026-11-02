@@ -430,6 +430,11 @@ def find_claim_polarities(text: str) -> tuple[set[str], set[str]]:
             negated = bool(
                 re.search(r"\bне\s*$", before)
                 or re.search(r"\bне\s+(?:\w+\s+){0,2}$", before)
+                or re.search(
+                    r"\bне\s+(?:предназначен|допускается|применяется|"
+                    r"используется|предусмотрен\w*)\b(?:\s+\w+){0,5}\s*$",
+                    before,
+                )
                 or re.search(r"\bбез\s+(?:\w+\s+){0,2}$", before)
                 or re.search(
                     r"\bне\s+(?:требуется|проводится|предусмотрен\w*|"

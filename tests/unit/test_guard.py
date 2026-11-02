@@ -368,6 +368,36 @@ def test_absent_field_can_be_marked_as_no_data(
     assert "missing_field_mentioned" not in codes(report)
 
 
+def test_clarification_does_not_hide_absent_field_value(
+    partial_product: ProductInput, fixture_drafts: dict[str, Any]
+) -> None:
+    for addition in (
+        " Уточните класс точности — 1,5.",
+        " Уточните условия монтажа. Класс точности — 1,5.",
+    ):
+        payload = copy.deepcopy(fixture_drafts[partial_product.name])
+        payload["seo_description"] += addition
+        report = check_draft(
+            partial_product,
+            build_facts(partial_product),
+            CardDraft.model_validate(payload),
+        )
+        assert "missing_field_mentioned" in codes(report), addition
+
+
+def test_clarification_without_value_is_allowed(
+    partial_product: ProductInput, fixture_drafts: dict[str, Any]
+) -> None:
+    payload = copy.deepcopy(fixture_drafts[partial_product.name])
+    payload["seo_description"] += " Уточните класс точности у поставщика."
+    report = check_draft(
+        partial_product,
+        build_facts(partial_product),
+        CardDraft.model_validate(payload),
+    )
+    assert "missing_field_mentioned" not in codes(report)
+
+
 def test_verbatim_latin_power_supply_is_allowed(
     product: ProductInput, good_draft: dict[str, Any]
 ) -> None:
