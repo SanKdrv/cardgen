@@ -181,8 +181,10 @@ def create_app(
         response_model_exclude_none=True,
         tags=["cards"],
     )
-    async def generate_card(payload: GenerateRequest) -> CardResult:
-        return await generator.generate(payload.product, payload.options)
+    async def generate_card(payload: GenerateRequest | ProductInput) -> CardResult:
+        if isinstance(payload, GenerateRequest):
+            return await generator.generate(payload.product, payload.options)
+        return await generator.generate(payload, GenerateOptions())
 
     @app.post(
         "/api/v1/cards/batch",
