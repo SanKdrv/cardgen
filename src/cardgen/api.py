@@ -210,17 +210,32 @@ def create_app(
     # --- веб-форма -----------------------------------------------------------
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-    async def index(request: Request) -> HTMLResponse:
+    async def index(request: Request, example: int | None = None) -> HTMLResponse:
+        examples = load_examples()
+        form: dict[str, Any] | None = None
+        if example is not None and 0 <= example < len(examples):
+            selected = examples[example]
+            form = {
+                "name": selected.get("name", ""),
+                "manufacturer": selected.get("manufacturer", ""),
+                "category": selected.get("category", ""),
+                "description": selected.get("description", ""),
+                "specs": [
+                    {"key": key, "value": value}
+                    for key, value in dict(selected.get("specs", {})).items()
+                ],
+                "allow_fallback": True,
+            }
         return templates.TemplateResponse(
             request=request,
             name="index.html",
             context={
-                "examples": load_examples(),
+                "examples": examples,
                 "provider": active_provider.name,
                 "provider_ready": active_provider.ready,
                 "model": active_provider.model,
                 "error": None,
-                "form": None,
+                "form": form,
             },
         )
 
@@ -301,6 +316,9 @@ def create_app(
                 "result": result,
                 "json_text": result.model_dump_json(indent=2, exclude_none=True),
                 "markdown_text": result.markdown,
+                "provider": active_provider.name,
+                "provider_ready": active_provider.ready,
+                "model": active_provider.model,
             },
         )
 

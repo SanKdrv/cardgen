@@ -205,6 +205,20 @@ def test_index_page() -> None:
     assert "Данные прибора" in response.text
 
 
+def test_index_prefills_example(demo_products: list[dict[str, Any]]) -> None:
+    with make_client() as client:
+        response = client.get("/?example=0")
+    assert response.status_code == 200
+    assert demo_products[0]["name"] in response.text
+    assert "0–1,6 МПа" in response.text
+
+
+def test_index_ignores_out_of_range_example() -> None:
+    with make_client() as client:
+        response = client.get("/?example=99")
+    assert response.status_code == 200
+
+
 def test_ui_generation(demo_products: list[dict[str, Any]]) -> None:
     product = demo_products[1]
     with make_client() as client:
@@ -224,6 +238,7 @@ def test_ui_generation(demo_products: list[dict[str, Any]]) -> None:
     assert product["name"] in response.text
     assert "Не хватает данных" in response.text
     assert "SEO-описание" in response.text
+    assert "нет ключа" not in response.text
 
 
 def test_ui_validation_error() -> None:
