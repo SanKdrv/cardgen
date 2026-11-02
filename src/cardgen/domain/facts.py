@@ -27,7 +27,9 @@ _NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
 # Коды вида IP65, RS-485, G1/2, M20×1,5, МП4, ТБ-1. Пробел внутри кода не
 # допускаем, иначе под шаблон попали бы обычные фразы вроде «класс 1,5».
 _CODE_RE = re.compile(
-    r"[A-Za-zА-Яа-яЁё]{1,6}-?\d+(?:[.,]\d+)?" r"(?:[x×/‑-]\d+(?:[.,]\d+)?)*(?![A-Za-zА-Яа-яЁё])"
+    r"(?<![0-9A-Za-zА-Яа-яЁё])"
+    r"[A-Za-zА-Яа-яЁё]{1,6}-?\d+(?:[.,]\d+)?"
+    r"(?:[x×/‑-]\d+(?:[.,]\d+)?)*(?![A-Za-zА-Яа-яЁё])"
 )
 
 # Единицы, которые встречаются в карточках КИП. Список нужен, чтобы проверять
@@ -537,8 +539,9 @@ _HINTS: dict[str, str] = {
 def infer_category(product: ProductInput) -> str | None:
     haystack = f"{product.category or ''} {product.name}".lower()
     for category, keywords in _CATEGORY_KEYWORDS:
-        if any(keyword in haystack for keyword in keywords):
-            return category
+        for keyword in keywords:
+            if re.search(rf"(?<![а-я]){re.escape(keyword)}(?![а-я])", haystack):
+                return category
     return None
 
 

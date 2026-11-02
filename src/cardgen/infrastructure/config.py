@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     max_retries: int = Field(default=3, ge=1, le=10)
     retry_backoff_s: float = Field(default=0.5, ge=0, le=30)
     temperature: float = Field(default=0.2, ge=0, le=2)
-    max_output_tokens: int = Field(default=8000, ge=200, le=32_000)
+    max_output_tokens: int = Field(default=16000, ge=200, le=32_000)
     json_mode: bool = True
     log_level: str = "INFO"
 

@@ -52,6 +52,18 @@ def test_unit_declensions_are_normalized(product: ProductInput) -> None:
     assert facts.quantities_in("температура 70 градусов") == {("70", "°c")}
 
 
+def test_dimension_with_x_is_not_a_code() -> None:
+    product = ProductInput(
+        name="Манометр",
+        manufacturer="Завод",
+        specs={"габариты": "160×60 мм"},
+    )
+    facts = build_facts(product)
+    assert ("160", "мм") in facts.quantity_pairs
+    assert ("60", "мм") in facts.quantity_pairs
+    assert facts.codes_in("160×60 мм") == set()
+
+
 def test_numbers_from_code_are_extracted(product: ProductInput) -> None:
     facts = build_facts(product)
     assert {"1", "2"} <= facts.numbers
@@ -153,6 +165,16 @@ def test_infer_category_and_required_fields(product: ProductInput) -> None:
     assert infer_category(product) == "манометр"
     assert "диаметр корпуса" in required_fields_for(product)
     assert infer_category(ProductInput(name="Клапан", manufacturer="Завод")) is None
+
+
+def test_manometric_thermometer_is_not_a_manometer() -> None:
+    product = ProductInput(
+        name="Термометр манометрический ТКМ-1",
+        manufacturer="Росма",
+        category="Термометры",
+    )
+    assert infer_category(product) == "термометр"
+    assert "длина монтажной части" in required_fields_for(product)
 
 
 def test_spec_key_synonyms() -> None:

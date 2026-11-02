@@ -185,7 +185,7 @@ def test_default_fallback_returns_200(
 
 def test_batch_generation(demo_products: list[dict[str, Any]]) -> None:
     with make_client() as client:
-        response = client.post("/api/v1/cards/batch", json={"products": demo_products})
+        response = client.post("/api/v1/cards/batch", json={"products": demo_products[:2]})
     assert response.status_code == 200
     body = response.json()
     assert len(body["items"]) == 2
@@ -201,7 +201,7 @@ def test_batch_reports_per_item_errors(
         response = client.post(
             "/api/v1/cards/batch",
             json={
-                "products": demo_products,
+                "products": demo_products[:2],
                 "options": {"allow_fallback": False},
             },
         )

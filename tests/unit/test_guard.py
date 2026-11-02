@@ -448,20 +448,16 @@ def test_all_fixture_drafts_pass_guard(
         assert report.ok, report.violations
 
 
-def test_committed_examples_pass_guard(demo_products: list[dict[str, Any]]) -> None:
+def test_committed_examples_pass_guard() -> None:
     root = Path(__file__).resolve().parents[2]
-    names = [
-        "01-manometr-pokazyvayuschiy-dm-02",
-        "02-termometr-bimetallicheskiy-tb-1",
-    ]
-    for payload, name in zip(demo_products, names, strict=True):
-        product = ProductInput.model_validate(payload)
-        example = json.loads(
-            (root / "examples" / "output" / f"{name}.json").read_text(encoding="utf-8")
-        )
+    paths = sorted((root / "examples" / "output").glob("*.json"))
+    assert len(paths) >= 15
+    for path in paths:
+        example = json.loads(path.read_text(encoding="utf-8"))
+        product = ProductInput.model_validate(example["product"])
         report = check_draft(
             product,
             build_facts(product),
             CardDraft.model_validate(example["draft"]),
         )
-        assert report.ok, (name, report.violations)
+        assert report.ok, (path.name, report.violations)

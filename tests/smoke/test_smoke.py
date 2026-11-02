@@ -123,8 +123,11 @@ def test_cli_generate_end_to_end(tmp_path: Path) -> None:
         timeout=120,
     )
     assert result.returncode == 0, result.stderr
+    expected = len(
+        json.loads((ROOT / "examples" / "products.json").read_text(encoding="utf-8"))["products"]
+    )
     files = sorted(output.glob("*.json"))
-    assert len(files) == 2
+    assert len(files) == expected
     payload = json.loads(files[0].read_text(encoding="utf-8"))
     assert payload["meta"]["provider"] == "fixture"
     assert payload["markdown"].startswith("# ")
@@ -178,7 +181,10 @@ def test_cli_handles_non_utf8_console(tmp_path: Path) -> None:
         timeout=120,
     )
     assert result.returncode == 0, result.stderr
-    assert len(list(output.glob("*.json"))) == 2
+    expected = len(
+        json.loads((ROOT / "examples" / "products.json").read_text(encoding="utf-8"))["products"]
+    )
+    assert len(list(output.glob("*.json"))) == expected
 
 
 @pytest.mark.smoke

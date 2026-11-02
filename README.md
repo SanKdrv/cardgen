@@ -20,7 +20,7 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 243 теста, покрытие 90% |
+| Тесты | 245 тестов, покрытие 91% |
 | Зависимости | без LangChain и SDK провайдеров |
 
 ![Веб-форма с загруженным демо-товаром](docs/screenshot-index.png)
@@ -46,7 +46,12 @@
 
 ## Демо и примеры
 
-Готовые результаты для двух товаров лежат в [`examples/output`](examples/output):
+В [`examples/output`](examples/output) — **17 карточек** для разных ситуаций:
+полные данные, пропуски, placeholder-значения, пустые `specs`, только
+описание паспорта, длинный набор характеристик, латинские единицы и разные
+категории КИП. Полный разбор кейсов — в [`examples/README.md`](examples/README.md).
+
+Ключевые примеры:
 
 | Товар | Результат | Особенность |
 |---|---|---|
@@ -55,8 +60,9 @@
 
 ![Страница результата](docs/screenshot-result.png)
 
-Примеры получены живым прогоном через OpenCode Go (`deepseek-v4.1-flash`):
-по одному обращению к модели на товар, без fallback. Воспроизвести без ключа
+Примеры получены живым прогоном через OpenCode Go (`deepseek-v4.1-flash`).
+Там, где модель не прошла автопроверку, в `meta.fallback_used` и
+`examples/README.md` явно отмечен безопасный шаблон. Воспроизвести без ключа
 можно в офлайн-режиме `CARDGEN_PROVIDER=fixture` — команда ниже.
 
 ```bash
@@ -153,7 +159,7 @@ CARDGEN_SESSION_HEADER=
 | `CARDGEN_MAX_RETRIES` | `3` | HTTP-ретраи на 429/5xx |
 | `CARDGEN_TIMEOUT_S` | `180` | таймаут запроса |
 | `CARDGEN_TEMPERATURE` | `0.2` | температура генерации |
-| `CARDGEN_MAX_OUTPUT_TOKENS` | `8000` | запас токенов: reasoning-модели тратят часть на размышление |
+| `CARDGEN_MAX_OUTPUT_TOKENS` | `16000` | запас токенов: reasoning-модели тратят часть на размышление |
 | `CARDGEN_JSON_MODE` | `true` | просить `response_format=json_object` |
 | `CARDGEN_EXTRA_HEADERS` | `{}` | дополнительные заголовки JSON-объектом |
 | `CARDGEN_LOG_LEVEL` | `INFO` | уровень логов |
@@ -355,7 +361,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 243 теста, включая smoke
+pytest                          # 245 тестов, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .
