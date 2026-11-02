@@ -107,9 +107,10 @@ class CardGenerator:
                             "ответ модели не прошёл автопроверку", last_violations
                         )
                     fallback_reason = "validation_failed"
+                    reasons = summarize_violations(last_violations, limit=3)
                     warnings.append(
                         "Модель не прошла автопроверку; обращений к LLM: "
-                        f"{attempts}. Использован безопасный шаблон."
+                        f"{attempts}. Причины: {reasons}. Использован безопасный шаблон."
                     )
             except LLMError as exc:
                 if not options.allow_fallback:

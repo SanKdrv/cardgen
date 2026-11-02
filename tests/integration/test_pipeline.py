@@ -94,6 +94,7 @@ async def test_fallback_after_failed_validation(
     assert result.meta.fallback_reason == "validation_failed"
     assert result.meta.validation.ok
     assert result.warnings
+    assert any("title_too_long" in warning for warning in result.warnings)
     expected = build_template_draft(product, detect_missing_fields(product))
     assert result.draft.seo_title == expected.seo_title
 
