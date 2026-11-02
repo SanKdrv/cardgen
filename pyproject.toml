@@ -28,13 +28,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Точные версии, чтобы локальные хуки и CI проверяли одинаково:
+# новые ruff/mypy меняют форматирование и правила.
 dev = [
-  "pytest>=8.3,<9.0",
-  "pytest-asyncio>=0.24,<1.0",
-  "pytest-cov>=5.0,<6.0",
-  "ruff>=0.6,<1.0",
-  "mypy>=1.11,<2.0",
-  "pre-commit>=3.8,<4.0",
+  "pytest==8.3.3",
+  "pytest-asyncio==0.24.0",
+  "pytest-cov==5.0.0",
+  "ruff==0.6.9",
+  "mypy==1.11.2",
+  "pre-commit==3.8.0",
 ]
 
 [project.scripts]
