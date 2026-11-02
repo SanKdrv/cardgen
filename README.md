@@ -1,5 +1,8 @@
 # cardgen — AI-карточки контрольно-измерительных приборов
 
+[![ci](https://github.com/SanKdrv/cardgen/actions/workflows/ci.yml/badge.svg)](https://github.com/SanKdrv/cardgen/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Сервис принимает данные о приборе — JSON или заполненную форму — и возвращает
 черновик карточки товара для B2B-каталога: SEO-заголовок, SEO-описание,
 структурированные характеристики, поисковые запросы и коммерческий блок
