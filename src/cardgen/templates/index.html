@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}cardgen — черновик карточки товара{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">B2B-каталог · контрольно-измерительные приборы</p>
+    <h1>Черновик карточки товара<br>за один запрос</h1>
+    <p class="lede">
+      Заголовок, SEO-описание, характеристики, поисковые запросы и коммерческий
+      блок. Все технические значения берутся только из исходных данных и
+      проверяются до публикации.
+    </p>
+  </div>
+  <div class="hero-note">
+    <span class="hero-note-mark">0</span>
+    <div>
+      <strong>выдуманных характеристик</strong>
+      <span>числа и коды сверяются с входным JSON автоматически</span>
+    </div>
+  </div>
+</section>
+
+{% if error %}
+<div class="alert alert-error" role="alert">
+  <strong>Не получилось:</strong> {{ error }}
+</div>
+{% endif %}
+
+<form class="layout" method="post" action="/ui/generate" id="card-form">
+  <section class="panel panel-form">
+    <div class="panel-head">
+      <h2>Данные прибора</h2>
+      <label class="example-picker">
+        <span>Загрузить пример</span>
+        <select id="examples-select">
+          <option value="">— выберите товар —</option>
+          {% for item in examples %}
+            <option value="{{ loop.index0 }}">{{ item.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="field-grid">
+      <label class="field">
+        <span>Название товара <b>*</b></span>
+        <input type="text" name="name" id="name" required maxlength="200"
+               placeholder="Манометр показывающий DM 02"
+               value="{{ form.name if form else '' }}">
+      </label>
+      <label class="field">
+        <span>Производитель <b>*</b></span>
+        <input type="text" name="manufacturer" id="manufacturer" required maxlength="200"
+               placeholder="Манотомь"
+               value="{{ form.manufacturer if form else '' }}">
+      </label>
+      <label class="field field-wide">
+        <span>Категория</span>
+        <input type="text" name="category" id="category" maxlength="120"
+               placeholder="Манометры"
+               value="{{ form.category if form else '' }}">
+      </label>
+      <label class="field field-wide">
+        <span>Описание или фрагмент паспорта</span>
+        <textarea name="description" id="description" rows="6" maxlength="20000"
+                  placeholder="Прибор предназначен для измерения избыточного давления…">{{ form.description if form else '' }}</textarea>
+        <small class="hint"><span id="description-count">0</span> символов · факты из этого текста тоже считаются источником</small>
+      </label>
+    </div>
+
+    <div class="spec-head">
+      <h3>Технические характеристики</h3>
+      <button type="button" class="btn btn-ghost btn-small" id="add-spec">+ Добавить</button>
+    </div>
+    <div class="specs" id="specs">
+      {% if form and form.specs %}
+        {% for spec in form.specs %}
+          <div class="spec-row">
+            <input type="text" name="spec_key" placeholder="диапазон измерений" maxlength="80" value="{{ spec.key }}">
+            <input type="text" name="spec_value" placeholder="0–1,6 МПа" maxlength="300" value="{{ spec.value }}">
+            <button type="button" class="icon-btn" data-remove-spec title="Удалить">×</button>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="spec-row">
+          <input type="text" name="spec_key" placeholder="диапазон измерений" maxlength="80">
+          <input type="text" name="spec_value" placeholder="0–1,6 МПа" maxlength="300">
+          <button type="button" class="icon-btn" data-remove-spec title="Удалить">×</button>
+        </div>
+        <div class="spec-row">
+          <input type="text" name="spec_key" placeholder="класс точности" maxlength="80">
+          <input type="text" name="spec_value" placeholder="1,5" maxlength="300">
+          <button type="button" class="icon-btn" data-remove-spec title="Удалить">×</button>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <label class="checkbox">
+        <input type="checkbox" name="allow_fallback" {% if not form or form.allow_fallback %}checked{% endif %}>
+        <span>Разрешить безопасный шаблон, если LLM недоступна</span>
+      </label>
+      <button type="submit" class="btn btn-primary" id="submit-btn">
+        Сгенерировать карточку
+      </button>
+    </div>
+  </section>
+
+  <aside class="panel panel-aside">
+    <h2>Как это работает</h2>
+    <ol class="steps">
+      <li><strong>Факты.</strong> Сервис собирает числа, единицы и коды из JSON и текста паспорта.</li>
+      <li><strong>Генерация.</strong> LLM пишет тексты, но не получает права добавлять новые факты.</li>
+      <li><strong>Проверка.</strong> Каждое число и обозначение сверяется с исходными данными.</li>
+      <li><strong>Ретрай или шаблон.</strong> При нарушении модель получает замечания; после второй неудачи включается детерминированный шаблон.</li>
+    </ol>
+
+    <div class="aside-note">
+      <h3>Что попадёт в результат</h3>
+      <ul class="check-list">
+        <li>SEO-заголовок до 70 символов</li>
+        <li>SEO-описание 800–1200 символов</li>
+        <li>структурированные характеристики</li>
+        <li>3–5 поисковых запросов</li>
+        <li>коммерческий блок для менеджера</li>
+        <li>список недостающих данных</li>
+      </ul>
+    </div>
+
+    <div class="aside-note aside-note-warn">
+      <h3>Если данных мало</h3>
+      <p>Сервис не придумывает значения: отсутствующие поля попадут в отдельный список «уточнить».</p>
+    </div>
+  </aside>
+</form>
+
+<script id="examples-data" type="application/json">{{ examples | tojson }}</script>
+{% endblock %}

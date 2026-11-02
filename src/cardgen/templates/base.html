@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}cardgen — карточки КИП{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">cg</span>
+      <span class="brand-text">
+        <strong>cardgen</strong>
+        <small>карточки КИП без выдумок</small>
+      </span>
+    </a>
+    <div class="topbar-meta">
+      <span class="badge badge-muted" title="Активный провайдер">{{ provider }}</span>
+      {% if provider_ready %}
+        <span class="status"><span class="dot dot-ok"></span>провайдер готов</span>
+      {% else %}
+        <span class="status"><span class="dot dot-warn"></span>нет ключа — сработает шаблон</span>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <span>cardgen · прототип сервиса для тестового задания</span>
+    <span class="footer-links">
+      <a href="/api/v1/examples">примеры</a>
+      <a href="/docs">Swagger</a>
+      <a href="/health">health</a>
+    </span>
+  </footer>
+
+  <script src="{{ url_for('static', path='app.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
