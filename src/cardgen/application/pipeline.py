@@ -51,14 +51,20 @@ class CardGenerator:
     ) -> CardResult:
         """Ограничивает число одновременных генераций на процесс."""
         try:
-            async with asyncio.timeout(self.settings.concurrency_timeout_s):
-                async with self._semaphore:
-                    return await self._generate_unchecked(product, options)
+            await asyncio.wait_for(
+                self._semaphore.acquire(),
+                timeout=self.settings.concurrency_timeout_s,
+            )
         except TimeoutError as exc:
             raise ConcurrencyLimitError(
                 "сервис занят: превышен лимит одновременных генераций",
                 self.settings.concurrency_timeout_s,
             ) from exc
+
+        try:
+            return await self._generate_unchecked(product, options)
+        finally:
+            self._semaphore.release()
 
     async def _generate_unchecked(
         self,

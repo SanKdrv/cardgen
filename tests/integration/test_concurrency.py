@@ -89,6 +89,31 @@ async def test_concurrency_timeout_is_503_error(
         generator._semaphore.release()
 
 
+async def test_slow_generation_is_not_killed_by_slot_timeout(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    provider = BlockingProvider(_raw(good_draft))
+    generator = CardGenerator(provider, _settings(concurrency_timeout_s=0.01))
+    task = asyncio.create_task(generator.generate(product))
+    await provider.started.wait()
+    await asyncio.sleep(0.05)
+    provider.release.set()
+    result = await task
+    assert result.meta.fallback_used is False
+
+
+async def test_concurrency_handler_returns_503() -> None:
+    from cardgen.presentation.api.errors import handle_concurrency_limit
+
+    response = await handle_concurrency_limit(
+        None,  # type: ignore[arg-type]
+        ConcurrencyLimitError("сервис занят", 30),
+    )
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "30"
+    assert b"service_busy" in response.body
+
+
 async def test_rate_limiter_allows_burst_then_blocks() -> None:
     from cardgen.presentation.api.rate_limit import RateLimiter
 

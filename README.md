@@ -21,7 +21,7 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 251 тест, покрытие 92% |
+| Тесты | 253 теста, покрытие 92% |
 | Нагрузка | до 4 параллельных генераций и 60 запросов/мин на IP |
 | Зависимости | без LangChain и SDK провайдеров |
 
@@ -378,7 +378,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 251 тест, включая smoke
+pytest                          # 253 теста, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .

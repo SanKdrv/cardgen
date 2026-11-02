@@ -41,4 +41,10 @@ class RateLimiter:
                 retry_after = max(1, math.ceil(bucket[0] + self.window_s - now))
                 return False, retry_after
             bucket.append(now)
+            if len(self._hits) > 2048:
+                stale = [
+                    key for key, values in self._hits.items() if not values or values[-1] <= cutoff
+                ]
+                for key in stale:
+                    self._hits.pop(key, None)
             return True, None
