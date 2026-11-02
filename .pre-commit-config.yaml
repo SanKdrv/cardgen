@@ -1,0 +1,56 @@
+default_language_version:
+  python: python3
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (src)
+        entry: python -m mypy
+        language: system
+        args: [src]
+        pass_filenames: false
+        types: [python]
+
+      - id: unit-tests
+        name: pytest (unit)
+        entry: python -m pytest -q -m "not smoke" tests/unit
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: integration-tests
+        name: pytest (unit + integration)
+        entry: python -m pytest -q -m "not smoke" tests/unit tests/integration
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+  - repo: local
+    hooks:
+      - id: commit-message
+        name: проверка сообщения коммита
+        entry: python scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]
