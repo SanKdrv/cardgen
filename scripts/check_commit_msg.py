@@ -62,7 +62,7 @@ def check(message: str) -> list[str]:
     elif subject.endswith("."):
         errors.append("заголовок не должен заканчиваться точкой")
 
-    if len(lines) < 3 or not lines[1].strip():
+    if len(lines) < 3 or lines[1].strip():
         errors.append("после заголовка нужна пустая строка и тело коммита на русском")
     else:
         body = "\n".join(lines[2:]).strip()

@@ -27,7 +27,7 @@ repos:
     hooks:
       - id: mypy
         name: mypy (src)
-        entry: python -m mypy
+        entry: python scripts/tool.py -m mypy
         language: system
         args: [src]
         pass_filenames: false
@@ -35,14 +35,14 @@ repos:
 
       - id: unit-tests
         name: pytest (unit)
-        entry: python -m pytest -q -m "not smoke" tests/unit
+        entry: python scripts/run_tests.py unit
         language: system
         pass_filenames: false
         stages: [pre-commit]
 
       - id: integration-tests
         name: pytest (unit + integration)
-        entry: python -m pytest -q -m "not smoke" tests/unit tests/integration
+        entry: python scripts/run_tests.py all
         language: system
         pass_filenames: false
         stages: [pre-push]
