@@ -10,6 +10,23 @@ MAX_SPECS = 40
 MAX_SPEC_KEY = 80
 MAX_SPEC_VALUE = 300
 
+_PLACEHOLDER_VALUES = frozenset(
+    {
+        "н/д",
+        "нет данных",
+        "не указано",
+        "данных нет",
+        "n/a",
+        "na",
+        "none",
+    }
+)
+
+
+def _is_placeholder(value: str) -> bool:
+    normalized = value.casefold().strip(" .,;:-—–/")
+    return not normalized or normalized in _PLACEHOLDER_VALUES
+
 
 def _collapse_whitespace(value: str) -> str:
     return " ".join(value.split())
@@ -73,7 +90,7 @@ class ProductInput(BaseModel):
             if raw_value is None:
                 continue
             value = _collapse_whitespace(str(raw_value))
-            if not value:
+            if _is_placeholder(value):
                 continue
             if len(value) > MAX_SPEC_VALUE:
                 raise ValueError(

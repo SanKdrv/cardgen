@@ -21,6 +21,16 @@ _SAFE_SENTENCES = (
 )
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_MARKDOWN_CLEAN_RE = re.compile(r"[*_`#>]+")
+
+
+def _plain_text(value: str) -> str:
+    """Убирает Markdown, чтобы шаблон не копировал разметку в карточку."""
+    return _MARKDOWN_CLEAN_RE.sub("", value).strip()
+
+
+def _clean_phrase(value: str) -> str:
+    return _plain_text(value).strip(" .,;:-—–")
 
 
 def _truncate(text: str, limit: int) -> str:
@@ -36,12 +46,14 @@ def _truncate(text: str, limit: int) -> str:
 
 
 def _build_title(product: ProductInput) -> str:
-    with_manufacturer = f"{product.name} — {product.manufacturer}"
+    name = _clean_phrase(product.name)
+    manufacturer = _clean_phrase(product.manufacturer)
+    with_manufacturer = _clean_phrase(f"{name} — {manufacturer}")
     if len(with_manufacturer) <= TITLE_MAX:
         return with_manufacturer
-    if len(product.name) <= TITLE_MAX:
-        return product.name
-    return _truncate(product.name, TITLE_MAX)
+    if len(name) <= TITLE_MAX:
+        return name
+    return _clean_phrase(_truncate(name, TITLE_MAX))
 
 
 def _first_sentences(text: str, limit: int) -> str:
@@ -61,36 +73,40 @@ def _first_sentences(text: str, limit: int) -> str:
 
 
 def _build_description(product: ProductInput, missing: list[MissingField]) -> str:
-    category = (product.category or "контрольно-измерительный прибор").lower()
-    intro = f"{product.name} — {category} производства {product.manufacturer}."
-    purpose = _first_sentences(product.description, 420)
+    name = _clean_phrase(product.name)
+    manufacturer = _clean_phrase(product.manufacturer)
+    category = _clean_phrase(product.category or "контрольно-измерительный прибор").lower()
+    intro = f"{name} — {category} производства {manufacturer}."
+    purpose = _first_sentences(_plain_text(product.description), 420)
     if purpose and purpose.lower() not in intro.lower():
         intro = f"{intro} {purpose}"
 
     paragraphs = [intro]
 
     if product.specs:
-        lines = "\n".join(f"— {key}: {value}." for key, value in product.specs.items())
+        lines = "\n".join(
+            f"— {_plain_text(key)}: {_plain_text(value)}." for key, value in product.specs.items()
+        )
         paragraphs.append(f"Ключевые характеристики:\n{lines}")
 
-    paragraphs.append(
+    closing = (
         "Прибор предназначен для задач, где требуется контролировать параметры "
         "технологического процесса и подбирать оборудование по техническим "
         "характеристикам. Карточка помогает сравнить исполнение с другими приборами "
         "и подготовить коммерческое предложение."
     )
-
     if missing:
         fields = ", ".join(item.field for item in missing)
-        paragraphs.append(
-            f"Для полной карточки уточните: {fields}. После уточнения описание можно "
-            "расширить и дополнить характеристиками, которых сейчас нет в исходных данных."
+        closing = (
+            f"{closing} Для полной карточки уточните: {fields}. После уточнения описание "
+            "можно расширить и дополнить характеристиками, которых не хватает."
         )
+    paragraphs.append(closing)
 
     text = "\n\n".join(paragraphs)
     index = 0
     while len(text) < DESCRIPTION_MIN:
-        text = f"{text}\n\n{_SAFE_SENTENCES[index % len(_SAFE_SENTENCES)]}"
+        text = f"{text} {_SAFE_SENTENCES[index % len(_SAFE_SENTENCES)]}"
         index += 1
 
     if len(text) > DESCRIPTION_MAX:
@@ -104,12 +120,16 @@ def _build_description(product: ProductInput, missing: list[MissingField]) -> st
 
 
 def _build_commercial_block(product: ProductInput, missing: list[MissingField]) -> str:
+    name = _clean_phrase(product.name)
+    manufacturer = _clean_phrase(product.manufacturer)
     highlighted = list(product.specs.items())[:3]
     if highlighted:
-        specs_phrase = "; ".join(f"{key} — {value}" for key, value in highlighted)
-        block = f"{product.name} от {product.manufacturer}: {specs_phrase}."
+        specs_phrase = "; ".join(
+            f"{_plain_text(key)} — {_plain_text(value)}" for key, value in highlighted
+        )
+        block = f"{name} от {manufacturer}: {specs_phrase}."
     else:
-        block = f"{product.name} от {product.manufacturer}."
+        block = f"{name} от {manufacturer}."
 
     block += (
         " Прибор стоит предложить предприятиям, которым нужно подобрать оборудование "
@@ -128,14 +148,16 @@ def _build_commercial_block(product: ProductInput, missing: list[MissingField]) 
 
 
 def _build_queries(product: ProductInput) -> list[str]:
-    category = product.category or "прибор"
-    base = _truncate(product.name, 90)
+    category = _clean_phrase(product.category or "прибор")
+    name = _clean_phrase(product.name)
+    manufacturer = _clean_phrase(product.manufacturer)
+    base = _clean_phrase(_truncate(name, 90))
     candidates = [
         base,
         f"{base} купить",
         f"{base} характеристики",
-        f"{base} {product.manufacturer}",
-        f"{category} {product.manufacturer}",
+        f"{base} {manufacturer}",
+        f"{category} {manufacturer}",
     ]
     result: list[str] = []
     seen: set[str] = set()

@@ -161,3 +161,100 @@ def test_summarize_violations_limits_output() -> None:
     summary = summarize_violations(violations, limit=5)
     assert len(summary.splitlines()) == 6
     assert "…и ещё 2" in summary
+
+
+def _draft_with_description(
+    good_draft: dict[str, Any], addition: str
+) -> tuple[CardDraft, dict[str, Any]]:
+    payload = copy.deepcopy(good_draft)
+    payload["seo_description"] = f"{payload['seo_description']} {addition}"
+    return CardDraft.model_validate(payload), payload
+
+
+def test_invented_unit_is_rejected(product: ProductInput, good_draft: dict[str, Any]) -> None:
+    draft, _ = _draft_with_description(good_draft, "Рабочее давление — 1,6 бар.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "invented_quantity" in codes(report)
+
+
+def test_number_from_other_attribute_is_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    for addition in ("Рабочее давление — 100 МПа.", "Диаметр корпуса — 1,5 мм."):
+        draft, _ = _draft_with_description(good_draft, addition)
+        report = check_draft(product, build_facts(product), draft)
+        assert "invented_quantity" in codes(report)
+
+
+def test_spaced_protection_code_is_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    draft, _ = _draft_with_description(good_draft, "Степень защиты IP 40.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "invented_code" in codes(report)
+
+
+def test_negation_and_new_materials_are_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    additions = (
+        "Подходит для агрессивных сред.",
+        "Мембрана из керамики.",
+        "Сертификат соответствия прилагается.",
+        "Межповерочный интервал — 2 года.",
+        "Исполнение ATEX.",
+    )
+    for addition in additions:
+        draft, _ = _draft_with_description(good_draft, addition)
+        report = check_draft(product, build_facts(product), draft)
+        assert "invented_claim" in codes(report), addition
+
+
+def test_same_number_with_other_unit_on_partial_product(
+    partial_product: ProductInput,
+    fixture_drafts: dict[str, Any],
+) -> None:
+    payload = copy.deepcopy(fixture_drafts[partial_product.name])
+    payload["seo_description"] += " Рабочий сигнал — 20 мА."
+    report = check_draft(
+        partial_product, build_facts(partial_product), CardDraft.model_validate(payload)
+    )
+    assert "invented_quantity" in codes(report)
+
+
+def test_description_paragraph_count(product: ProductInput, good_draft: dict[str, Any]) -> None:
+    paragraphs = good_draft["seo_description"].split("\n\n")
+
+    two_paragraphs = copy.deepcopy(good_draft)
+    two_paragraphs["seo_description"] = f"{paragraphs[0]}\n\n{' '.join(paragraphs[1:])}"
+    report = check_draft(product, build_facts(product), CardDraft.model_validate(two_paragraphs))
+    assert "description_paragraphs" not in codes(report)
+
+    four_paragraphs = copy.deepcopy(good_draft)
+    four_paragraphs["seo_description"] = (
+        f"{paragraphs[0]}\n\n{paragraphs[1]}\n\n{paragraphs[2]}\n\nДополнительный абзац."
+    )
+    report = check_draft(product, build_facts(product), CardDraft.model_validate(four_paragraphs))
+    assert "description_paragraphs" in codes(report)
+
+
+def test_meta_phrase_is_rejected(product: ProductInput, good_draft: dict[str, Any]) -> None:
+    draft, _ = _draft_with_description(
+        good_draft, "В карточке указаны только характеристики из исходных данных."
+    )
+    report = check_draft(product, build_facts(product), draft)
+    assert "meta_phrase" in codes(report)
+
+
+def test_all_fixture_drafts_pass_guard(
+    product: ProductInput,
+    partial_product: ProductInput,
+    fixture_drafts: dict[str, Any],
+) -> None:
+    for item in (product, partial_product):
+        report = check_draft(
+            item,
+            build_facts(item),
+            CardDraft.model_validate(fixture_drafts[item.name]),
+        )
+        assert report.ok, report.violations

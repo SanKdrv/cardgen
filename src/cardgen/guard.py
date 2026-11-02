@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import re
 
-from .facts import BENIGN_CODES, FactTable, canonical, claim_name, find_claim_stems
+from .facts import BENIGN_CODES, FactTable, canonical, claim_name, compact, find_claim_stems
 from .models import CardDraft, GuardReport, GuardViolation, ProductInput
 
 TITLE_MAX = 70
 DESCRIPTION_MIN = 800
 DESCRIPTION_MAX = 1200
+DESCRIPTION_MIN_PARAGRAPHS = 2
+DESCRIPTION_MAX_PARAGRAPHS = 3
 QUERIES_MIN = 3
 QUERIES_MAX = 5
 QUERY_MAX_CHARS = 120
@@ -21,6 +23,14 @@ _MARKDOWN_RE = re.compile(r"\*\*|__|```|^\s*#{1,6}\s", re.MULTILINE)
 _LABEL_RE = re.compile(
     r"^\s*(seo[- ]?заголовок|seo[- ]?описание|заголовок|описание)\s*:",
     re.IGNORECASE,
+)
+_SPACED_CODE_RE = re.compile(r"\b(?:IP|RS|DN)\s?\d{2,4}[A-Za-zА-Яа-я0-9/-]*", re.IGNORECASE)
+_META_PHRASES = (
+    "в данных карточки",
+    "в исходных данных",
+    "параметры приведены",
+    "описание составлено",
+    "в карточке указаны",
 )
 
 
@@ -78,6 +88,26 @@ def _check_text_shape(draft: CardDraft, violations: list[GuardViolation]) -> Non
             "seo_description",
             f"описание длиной {len(draft.seo_description)} символов, максимум {DESCRIPTION_MAX}",
         )
+
+    paragraphs = [item for item in draft.seo_description.split("\n\n") if item.strip()]
+    if not DESCRIPTION_MIN_PARAGRAPHS <= len(paragraphs) <= DESCRIPTION_MAX_PARAGRAPHS:
+        _add(
+            violations,
+            "description_paragraphs",
+            "seo_description",
+            f"нужно {DESCRIPTION_MIN_PARAGRAPHS}–{DESCRIPTION_MAX_PARAGRAPHS} абзаца, "
+            f"получено {len(paragraphs)}",
+        )
+    normalized_description = canonical(draft.seo_description)
+    for phrase in _META_PHRASES:
+        if phrase in normalized_description:
+            _add(
+                violations,
+                "meta_phrase",
+                "seo_description",
+                f"фраза «{phrase}» комментирует источник данных, а не товар",
+            )
+            break
 
     if not QUERIES_MIN <= len(draft.search_queries) <= QUERIES_MAX:
         _add(
@@ -170,6 +200,7 @@ def _check_invented_tokens(
     }
     invented_numbers: dict[str, set[str]] = {}
     invented_codes: dict[str, set[str]] = {}
+    invented_quantities: dict[str, set[str]] = {}
 
     for field, text in texts.items():
         for number in facts.numbers_in(text):
@@ -178,6 +209,13 @@ def _check_invented_tokens(
         for code in facts.codes_in(text):
             if code and code not in BENIGN_CODES and code not in facts.compact_text:
                 invented_codes.setdefault(code, set()).add(field)
+        for spaced_code in _SPACED_CODE_RE.findall(text):
+            normalized_code = compact(spaced_code)
+            if normalized_code and normalized_code not in facts.compact_text:
+                invented_codes.setdefault(normalized_code, set()).add(field)
+        for number, unit in facts.quantities_in(text):
+            if number in facts.numbers and (number, unit) not in facts.quantity_pairs:
+                invented_quantities.setdefault(f"{number} {unit}", set()).add(field)
 
     reported: set[str] = set()
     for token, fields in list(invented_numbers.items()):
@@ -202,6 +240,18 @@ def _check_invented_tokens(
             ", ".join(sorted(fields)),
             f"обозначение «{token}» отсутствует в исходных данных",
         )
+    for token, fields in list(invented_quantities.items()):
+        if len(reported) >= MAX_TOKEN_VIOLATIONS:
+            break
+        if token in reported:
+            continue
+        reported.add(token)
+        _add(
+            violations,
+            "invented_quantity",
+            ", ".join(sorted(fields)),
+            f"значение «{token}» не подтверждено исходной характеристикой",
+        )
     return reported
 
 
@@ -217,11 +267,12 @@ def _check_claims(
         "commercial_block": draft.commercial_block,
         "search_queries": " \n ".join(draft.search_queries),
     }
+    fact_stems = find_claim_stems(facts.text)
     for field, text in texts.items():
         for stem in find_claim_stems(text):
             if stem in already_reported:
                 continue
-            if stem in facts.text:
+            if stem in fact_stems:
                 continue
             already_reported.add(stem)
             _add(

@@ -24,11 +24,59 @@ _TRANSLATION = str.maketrans(
 )
 
 _NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
-# Коды вида IP65, RS-485, G1/2, МП4, ТБ-1. Пробел внутри кода не допускаем,
-# иначе под шаблон попали бы обычные фразы вроде «класс 1,5».
+# Коды вида IP65, RS-485, G1/2, M20×1,5, МП4, ТБ-1. Пробел внутри кода не
+# допускаем, иначе под шаблон попали бы обычные фразы вроде «класс 1,5».
 _CODE_RE = re.compile(
-    r"[A-Za-zА-Яа-яЁё]{1,6}-?\d+(?:[.,]\d+)?(?:[/-]\d+(?:[.,]\d+)?)*(?![A-Za-zА-Яа-яЁё])"
+    r"[A-Za-zА-Яа-яЁё]{1,6}-?\d+(?:[.,]\d+)?" r"(?:[x×/‑-]\d+(?:[.,]\d+)?)*(?![A-Za-zА-Яа-яЁё])"
 )
+
+# Единицы, которые встречаются в карточках КИП. Список нужен, чтобы проверять
+# не только число, но и его единицу: «1,6 МПа» и «1,6 бар» — разные факты.
+_UNIT_VALUES = (
+    "кгс/см2",
+    "мм рт. ст.",
+    "мм рт.ст.",
+    "м3/час",
+    "м3/ч",
+    "л/мин",
+    "об/мин",
+    "мпа",
+    "кпа",
+    "гпа",
+    "бар",
+    "мм",
+    "см",
+    "°c",
+    "°с",
+    "℃",
+    "%",
+    "квт",
+    "кв",
+    "мв",
+    "ма",
+    "вт",
+    "в",
+    "а",
+    "гц",
+    "кг",
+    "мг",
+    "г",
+    "мин",
+    "ч",
+    "с",
+    "дб",
+    "ом",
+    "руб",
+    "₽",
+    "$",
+    "€",
+)
+_UNIT_ALTERNATION = "|".join(
+    re.escape(unit) for unit in sorted(_UNIT_VALUES, key=len, reverse=True)
+)
+_UNIT_RE = re.compile(rf"(?<![a-zа-я])(?:{_UNIT_ALTERNATION})(?![a-zа-я])", re.IGNORECASE)
+_QUANTITY_RE = re.compile(rf"(\d+(?:[.,]\d+)?)\s*({_UNIT_ALTERNATION})(?![a-zа-я])", re.IGNORECASE)
+
 _BENIGN_CODES = {"b2b", "b2c", "b2g"}
 BENIGN_CODES = frozenset(_BENIGN_CODES)
 
@@ -46,16 +94,48 @@ _CLAIM_STEMS: tuple[tuple[str, str], ...] = (
     ("пластик", "пластик"),
     ("титан", "титан"),
     ("чугун", "чугун"),
+    ("керамик", "керамика"),
+    ("резин", "резина"),
+    ("фторопласт", "фторопласт"),
+    ("силикон", "силикон"),
+    ("полипропилен", "полипропилен"),
+    ("пвх", "ПВХ"),
+    ("углеродист", "углеродистая сталь"),
+    ("закален", "закалённое стекло"),
+    ("оцинков", "оцинковка"),
     ("взрывозащищ", "взрывозащита"),
     ("пылевлагозащищ", "пылевлагозащита"),
     ("герметич", "герметичность"),
     ("поверк", "поверка"),
+    ("повероч", "поверка"),
     ("калибров", "калибровка"),
     ("сертифиц", "сертификация"),
+    ("сертифик", "сертификат"),
     ("гаранти", "гарантия"),
     ("агрессивн", "агрессивные среды"),
     ("пищев", "пищевая промышленность"),
     ("фармацевт", "фармацевтика"),
+    ("нефтегаз", "нефтегазовая отрасль"),
+    ("кислород", "кислород"),
+    ("atex", "ATEX"),
+    ("гост", "ГОСТ"),
+    ("германи", "Германия"),
+    ("кита", "Китай"),
+    ("итали", "Италия"),
+    ("япони", "Япония"),
+    ("сша", "США"),
+    ("коре", "Корея"),
+    ("тайван", "Тайвань"),
+    ("росси", "Россия"),
+    ("москв", "Москва"),
+    ("петербург", "Санкт-Петербург"),
+    ("рубл", "рубли"),
+    ("доллар", "доллары"),
+    ("евро", "евро"),
+    ("цена", "цена"),
+    ("цены", "цена"),
+    ("стоимост", "стоимость"),
+    ("срок служб", "срок службы"),
     ("hart", "HART"),
     ("modbus", "Modbus"),
     ("profibus", "Profibus"),
@@ -65,6 +145,9 @@ _CLAIM_STEMS: tuple[tuple[str, str], ...] = (
     ("gsm", "GSM"),
     ("usb", "USB"),
 )
+
+# Для этих стемов отрицание меняет смысл: «неагрессивные» ≠ «агрессивные».
+_NEGATABLE_STEMS = frozenset({"агрессивн", "герметич"})
 
 
 def canonical(text: str) -> str:
@@ -88,12 +171,21 @@ class FactTable:
     text: str
     compact_text: str
     numbers: frozenset[str]
+    quantity_pairs: frozenset[tuple[str, str]]
 
     def numbers_in(self, text: str) -> set[str]:
         return {_normalize_number(item) for item in _NUMBER_RE.findall(canonical(text))}
 
+    def quantities_in(self, text: str) -> set[tuple[str, str]]:
+        """Пары «число + единица», которые явно указаны в тексте."""
+        normalized = canonical(text)
+        return {
+            (_normalize_number(match.group(1)), _normalize_unit(match.group(2)))
+            for match in _QUANTITY_RE.finditer(normalized)
+        }
+
     def codes_in(self, text: str) -> set[str]:
-        return {compact(item) for item in _CODE_RE.findall(text)}
+        return {compact(item) for item in _CODE_RE.findall(canonical(text))}
 
 
 def _normalize_number(value: str) -> str:
@@ -103,6 +195,50 @@ def _normalize_number(value: str) -> str:
         stripped = normalized.lstrip("0")
         return stripped or "0"
     return normalized
+
+
+def _normalize_unit(value: str) -> str:
+    unit = value.lower().replace("℃", "°c").replace("°с", "°c")
+    return unit.replace(" ", "")
+
+
+def _segment_quantity_pairs(segment: str) -> set[tuple[str, str]]:
+    """Связывает числа с единицами внутри одной характеристики или предложения.
+
+    Если в сегменте одна единица (например, «0–1,6 МПа»), все числа относятся
+    к ней. Если единиц несколько, число привязывается к ближайшей.
+    """
+    normalized = canonical(segment)
+    unit_matches = list(_UNIT_RE.finditer(normalized))
+    if not unit_matches:
+        return set()
+
+    number_matches = list(_NUMBER_RE.finditer(normalized))
+    code_spans = [(match.start(), match.end()) for match in _CODE_RE.finditer(normalized)]
+    distinct_units = {_normalize_unit(match.group()) for match in unit_matches}
+    pairs: set[tuple[str, str]] = set()
+
+    for number_match in number_matches:
+        if any(start <= number_match.start() < end for start, end in code_spans):
+            continue
+        number = _normalize_number(number_match.group())
+        if len(distinct_units) == 1:
+            pairs.add((number, next(iter(distinct_units))))
+            continue
+
+        def distance(
+            unit_match: re.Match[str],
+            number_match: re.Match[str] = number_match,
+        ) -> int:
+            if unit_match.start() >= number_match.end():
+                return unit_match.start() - number_match.end()
+            if number_match.start() >= unit_match.end():
+                return number_match.start() - unit_match.end()
+            return 0
+
+        nearest = min(unit_matches, key=distance)
+        pairs.add((number, _normalize_unit(nearest.group())))
+    return pairs
 
 
 def build_facts(product: ProductInput) -> FactTable:
@@ -117,13 +253,49 @@ def build_facts(product: ProductInput) -> FactTable:
 
     text = canonical(" \n ".join(parts))
     numbers = frozenset(_normalize_number(item) for item in _NUMBER_RE.findall(text))
-    return FactTable(text=text, compact_text=compact(text), numbers=numbers)
+
+    segments: list[str] = [product.name, product.manufacturer, product.category or ""]
+    for key, value in product.specs.items():
+        segments.extend((key, value))
+    if product.description:
+        segments.extend(
+            part.strip() for part in re.split(r"[.!?]\s+|\n+", product.description) if part.strip()
+        )
+
+    pairs: set[tuple[str, str]] = set()
+    for segment in segments:
+        pairs.update(_segment_quantity_pairs(segment))
+
+    return FactTable(
+        text=text,
+        compact_text=compact(text),
+        numbers=numbers,
+        quantity_pairs=frozenset(pairs),
+    )
 
 
 def find_claim_stems(text: str) -> set[str]:
-    """Возвращает найденные в тексте маркеры свойств (в каноническом виде)."""
+    """Возвращает найденные в тексте маркеры свойств (в каноническом виде).
+
+    Для «агрессивных» и «герметичных» учитывается отрицание: наличие
+    «неагрессивных» во входе не разрешает написать «для агрессивных сред».
+    """
     normalized = canonical(text)
-    return {stem for stem, _ in _CLAIM_STEMS if stem in normalized}
+    found: set[str] = set()
+    for stem, _ in _CLAIM_STEMS:
+        start = 0
+        while True:
+            index = normalized.find(stem, start)
+            if index < 0:
+                break
+            if stem in _NEGATABLE_STEMS:
+                prefix = normalized[max(0, index - 4) : index]
+                if re.search(r"не[\s-]*$", prefix):
+                    start = index + 1
+                    continue
+            found.add(stem)
+            break
+    return found
 
 
 def claim_name(stem: str) -> str:
@@ -189,11 +361,11 @@ _REQUIRED_SYNONYMS: dict[str, tuple[str, ...]] = {
     "диапазон измерений": ("диапазон", "пределы измерен", "шкала"),
     "класс точности": ("класс точности", "погрешн", "точн"),
     "присоединение": ("присоединен", "резьб", "штуцер", "разъем"),
-    "диаметр корпуса": ("диаметр корпуса", "диаметр"),
+    "диаметр корпуса": ("диаметр корпуса", "диаметр корпус"),
     "питание": ("питани", "напряжение"),
     "интерфейс": ("интерфейс", "протокол"),
     "выходной сигнал": ("выходной сигнал", "выход", "сигнал"),
-    "длина монтажной части": ("длина монтажн", "монтажн", "длина"),
+    "длина монтажной части": ("длина монтажн", "монтажн"),
 }
 
 _HINTS: dict[str, str] = {

@@ -126,8 +126,8 @@ class CardGenerator:
                     "Шаблон не прошёл проверку: %s",
                     summarize_violations(report.violations, limit=10),
                 )
-                warnings.append(
-                    "Шаблон не прошёл проверку: " + summarize_violations(report.violations, limit=3)
+                raise ValidationFailedError(
+                    "безопасный шаблон не прошёл автопроверку", report.violations
                 )
 
         latency_ms = int((time.perf_counter() - started) * 1000)

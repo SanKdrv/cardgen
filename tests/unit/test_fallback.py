@@ -65,3 +65,20 @@ def test_template_with_very_long_name() -> None:
 def test_template_queries_are_unique(product: ProductInput) -> None:
     draft = build_template_draft(product, detect_missing_fields(product))
     assert len(draft.search_queries) == len({query.casefold() for query in draft.search_queries})
+
+
+def test_template_sanitizes_markdown_and_punctuation() -> None:
+    product = ProductInput(
+        name="Прибор.",
+        manufacturer="Завод.",
+        specs={"диапазон измерений": "0–1,6 МПа"},
+        description="**Корпус** из стали. ## Назначение для трубопроводов.",
+    )
+    draft = build_template_draft(product, detect_missing_fields(product))
+    report = check_draft(product, build_facts(product), draft)
+    assert report.ok, report.violations
+    assert "**" not in draft.seo_description
+    assert not draft.seo_title.endswith(".")
+    assert "в исходных данных" not in draft.seo_description
+    paragraphs = [item for item in draft.seo_description.split("\n\n") if item.strip()]
+    assert 2 <= len(paragraphs) <= 3

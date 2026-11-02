@@ -32,6 +32,16 @@ def test_build_facts_collects_numbers_and_text(product: ProductInput) -> None:
     assert facts.numbers_in("давление 2,5 МПа") == {"2.5"}
 
 
+def test_build_facts_links_numbers_to_units(product: ProductInput) -> None:
+    facts = build_facts(product)
+    assert ("1.6", "мпа") in facts.quantity_pairs
+    assert ("100", "мм") in facts.quantity_pairs
+    assert ("40", "°c") in facts.quantity_pairs
+    assert ("70", "°c") in facts.quantity_pairs
+    assert facts.quantities_in("давление 1,6 бар") == {("1.6", "бар")}
+    assert facts.quantities_in("диаметр 100 мм") == {("100", "мм")}
+
+
 def test_numbers_from_code_are_extracted(product: ProductInput) -> None:
     facts = build_facts(product)
     assert {"1", "2"} <= facts.numbers
@@ -50,6 +60,14 @@ def test_claim_stems_and_names(product: ProductInput) -> None:
     assert "нержаве" in stems
     assert "стал" in stems
     assert find_claim_stems("Обычный текст без обещаний") == set()
+
+
+def test_claim_negation_is_respected() -> None:
+    assert "агрессивн" not in find_claim_stems("неагрессивных жидкостей")
+    assert "агрессивн" not in find_claim_stems("не агрессивных сред")
+    assert "агрессивн" in find_claim_stems("для агрессивных сред")
+    # «нержавеющая» начинается с «не», но это не отрицание стали.
+    assert "нержаве" in find_claim_stems("нержавеющая сталь")
 
 
 def test_detect_missing_fields_for_complete_product(product: ProductInput) -> None:
@@ -101,3 +119,47 @@ def test_spec_key_synonyms() -> None:
         specs={"класс защиты": "IP65"},
     )
     assert any(item.field == "класс точности" for item in detect_missing_fields(with_protection))
+
+
+def test_placeholder_values_are_treated_as_missing() -> None:
+    product = ProductInput(
+        name="Манометр",
+        manufacturer="Завод",
+        specs={
+            "диапазон измерений": "0–1,6 МПа",
+            "класс точности": "—",
+            "присоединение": "н/д",
+            "диаметр корпуса": "нет данных",
+            "питание": "не указано",
+            "интерфейс": "N/A",
+        },
+    )
+    assert product.specs == {"диапазон измерений": "0–1,6 МПа"}
+    fields = {item.field for item in detect_missing_fields(product)}
+    assert {"класс точности", "присоединение", "диаметр корпуса"} <= fields
+
+
+def test_narrow_synonyms_do_not_cover_different_attribute() -> None:
+    product = ProductInput(
+        name="Манометр",
+        manufacturer="Завод",
+        specs={
+            "диапазон измерений": "0–1,6 МПа",
+            "диаметр присоединения": "G1/2",
+        },
+    )
+    fields = {item.field for item in detect_missing_fields(product)}
+    assert "диаметр корпуса" in fields
+    assert "присоединение" not in fields
+
+    thermometer = ProductInput(
+        name="Термометр",
+        manufacturer="Завод",
+        specs={
+            "диапазон измерений": "0…120 °C",
+            "длина кабеля": "2 м",
+            "присоединение": "M20×1,5",
+        },
+    )
+    fields = {item.field for item in detect_missing_fields(thermometer)}
+    assert "длина монтажной части" in fields

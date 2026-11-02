@@ -13,7 +13,7 @@ from cardgen.facts import detect_missing_fields
 from cardgen.fallback import build_template_draft
 from cardgen.llm.fixture import FixtureProvider
 from cardgen.llm.template import TemplateProvider
-from cardgen.models import GenerateOptions, ProductInput
+from cardgen.models import CardDraft, GenerateOptions, ProductInput
 from cardgen.pipeline import CardGenerator
 
 from ..conftest import ScriptedProvider
@@ -193,3 +193,21 @@ async def test_max_attempts_one_stops_after_first_failure(
     assert result.meta.attempts == 1
     assert result.meta.fallback_used is True
     assert len(provider.calls) == 1
+
+
+async def test_invalid_fallback_is_fail_closed(
+    product: ProductInput,
+    settings: Settings,
+    scripted_factory: Callable[[list[str | Exception]], ScriptedProvider],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = scripted_factory([LLMUnavailableError("нет сети")])
+    invalid = CardDraft(
+        seo_title="x" * 100,
+        seo_description="коротко",
+        search_queries=["один"],
+        commercial_block="мало",
+    )
+    monkeypatch.setattr("cardgen.pipeline.build_template_draft", lambda _product, _missing: invalid)
+    with pytest.raises(ValidationFailedError):
+        await make_generator(provider, settings).generate(product)
