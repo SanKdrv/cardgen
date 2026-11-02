@@ -13,8 +13,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from ...core.errors import DraftParseError
-from ...domain.models import CardDraft
+from ..core.errors import DraftParseError
+from ..domain.models import CardDraft
 
 _FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
 _TRAILING_COMMA_RE = re.compile(r",(\s*[}\]])")

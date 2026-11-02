@@ -33,9 +33,12 @@ _CODE_RE = re.compile(
 # Единицы, которые встречаются в карточках КИП. Список нужен, чтобы проверять
 # не только число, но и его единицу: «1,6 МПа» и «1,6 бар» — разные факты.
 _UNIT_VALUES = (
+    "кгс/см²",
     "кгс/см2",
     "мм рт. ст.",
     "мм рт.ст.",
+    "м вод. ст.",
+    "мм вод. ст.",
     "м3/час",
     "м3/ч",
     "л/мин",
@@ -44,10 +47,18 @@ _UNIT_VALUES = (
     "кпа",
     "гпа",
     "бар",
+    "атм",
+    "торр",
+    "па",
     "мм",
     "см",
+    "дюймов",
+    "дюйм",
+    "футов",
+    "фут",
     "°c",
     "°с",
+    "°f",
     "℃",
     "%",
     "квт",
@@ -73,6 +84,10 @@ _UNIT_VALUES = (
     "mpa",
     "kpa",
     "bar",
+    "psi",
+    "atm",
+    "torr",
+    "pa",
     "mm",
     "cm",
     "ma",
@@ -86,12 +101,22 @@ _UNIT_VALUES = (
     "ohm",
     "db",
     "c",
+    "f",
+    "m",
+    "in",
+    "ft",
+    "nm",
+    "lb",
+    "gal",
+    "l",
+    "ml",
 )
 _UNIT_ALTERNATION = "|".join(
     re.escape(unit) for unit in sorted(_UNIT_VALUES, key=len, reverse=True)
 )
 _UNIT_RE = re.compile(rf"(?<![a-zа-я])(?:{_UNIT_ALTERNATION})(?![a-zа-я])", re.IGNORECASE)
 _QUANTITY_RE = re.compile(rf"(\d+(?:[.,]\d+)?)\s*({_UNIT_ALTERNATION})(?![a-zа-я])", re.IGNORECASE)
+KNOWN_UNITS = frozenset(unit.lower() for unit in _UNIT_VALUES)
 
 _BENIGN_CODES = {"b2b", "b2c", "b2g"}
 BENIGN_CODES = frozenset(_BENIGN_CODES)
@@ -119,6 +144,22 @@ _CLAIM_STEMS: tuple[tuple[str, str], ...] = (
     ("углеродист", "углеродистая сталь"),
     ("закален", "закалённое стекло"),
     ("оцинков", "оцинковка"),
+    ("фланц", "фланцевое присоединение"),
+    ("тантал", "тантал"),
+    ("эпоксид", "эпоксидное покрытие"),
+    ("взрывобезопас", "взрывобезопасность"),
+    ("гидроудар", "защита от гидроударов"),
+    ("hastelloy", "Hastelloy"),
+    ("госреестр", "госреестр СИ"),
+    ("морск", "морская вода"),
+    ("абсолютн", "абсолютное давление"),
+    ("демпфер", "демпфер"),
+    ("мембран", "мембрана"),
+    ("пьезоэлектр", "пьезоэлектрический"),
+    ("тензорезистор", "тензорезистор"),
+    ("емкостн", "емкостный"),
+    ("индуктивн", "индуктивный"),
+    ("оптическ", "оптический"),
     ("взрывозащищ", "взрывозащита"),
     ("пылевлагозащищ", "пылевлагозащита"),
     ("герметич", "герметичность"),
@@ -161,9 +202,6 @@ _CLAIM_STEMS: tuple[tuple[str, str], ...] = (
     ("gsm", "GSM"),
     ("usb", "USB"),
 )
-
-# Для этих стемов отрицание меняет смысл: «неагрессивные» ≠ «агрессивные».
-_NEGATABLE_STEMS = frozenset({"агрессивн", "герметич"})
 
 
 def canonical(text: str) -> str:
@@ -219,6 +257,10 @@ def _normalize_unit(value: str) -> str:
         "mpa": "мпа",
         "kpa": "кпа",
         "bar": "бар",
+        "atm": "атм",
+        "psi": "psi",
+        "torr": "торр",
+        "pa": "па",
         "mm": "мм",
         "cm": "см",
         "ma": "ма",
@@ -231,7 +273,18 @@ def _normalize_unit(value: str) -> str:
         "kw": "квт",
         "ohm": "ом",
         "db": "дб",
+        "kgf/cm2": "кгс/см2",
+        "kgf/cm²": "кгс/см2",
         "c": "°c",
+        "f": "°f",
+        "m": "м",
+        "in": "дюйм",
+        "ft": "фут",
+        "nm": "нм",
+        "lb": "фунт",
+        "gal": "галлон",
+        "l": "л",
+        "ml": "мл",
     }
     return aliases.get(unit, unit.replace(" ", ""))
 
@@ -308,28 +361,34 @@ def build_facts(product: ProductInput) -> FactTable:
     )
 
 
-def find_claim_stems(text: str) -> set[str]:
-    """Возвращает найденные в тексте маркеры свойств (в каноническом виде).
+def find_claim_polarities(text: str) -> tuple[set[str], set[str]]:
+    """Возвращает позитивные и отрицательные упоминания маркеров свойств.
 
-    Для «агрессивных» и «герметичных» учитывается отрицание: наличие
-    «неагрессивных» во входе не разрешает написать «для агрессивных сред».
+    «не предназначен для агрессивных сред», «поверка не требуется» и
+    «без сертификата» — это отрицательные утверждения, их нельзя путать
+    с положительными фактами.
     """
     normalized = canonical(text)
-    found: set[str] = set()
+    positive: set[str] = set()
+    negative: set[str] = set()
     for stem, _ in _CLAIM_STEMS:
-        start = 0
-        while True:
-            index = normalized.find(stem, start)
-            if index < 0:
-                break
-            if stem in _NEGATABLE_STEMS:
-                prefix = normalized[max(0, index - 4) : index]
-                if re.search(r"не[\s-]*$", prefix):
-                    start = index + 1
-                    continue
-            found.add(stem)
-            break
-    return found
+        for match in re.finditer(re.escape(stem), normalized):
+            before = re.split(r"[.;:!?]", normalized[max(0, match.start() - 40) : match.start()])[
+                -1
+            ]
+            after = re.split(r"[.;:!?]", normalized[match.end() : match.end() + 40])[0]
+            negated = (
+                bool(re.search(r"\bне\b|\bбез\b", before))
+                or before.rstrip().endswith("не")
+                or bool(re.search(r"\bне\b", after))
+            )
+            (negative if negated else positive).add(stem)
+    return positive, negative
+
+
+def find_claim_stems(text: str) -> set[str]:
+    """Возвращает только положительные маркеры свойств."""
+    return find_claim_polarities(text)[0]
 
 
 def claim_name(stem: str) -> str:

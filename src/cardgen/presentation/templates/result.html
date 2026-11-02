@@ -22,8 +22,19 @@
 
 {% if result.meta.fallback_used %}
 <div class="alert alert-warn" role="status">
-  <strong>Работал безопасный шаблон.</strong>
-  {{ result.meta.fallback_reason }} — тексты собраны детерминированно, без обращения к модели.
+  {% if result.meta.fallback_reason == "validation_failed" %}
+    <strong>Ответ модели не прошёл автопроверку.</strong>
+    Показан безопасный шаблон; какие именно правила нарушены — в предупреждениях ниже.
+  {% elif result.meta.fallback_reason == "template_mode" %}
+    <strong>Включён режим без LLM.</strong>
+    Тексты собраны детерминированным шаблоном.
+  {% elif result.meta.fallback_reason and result.meta.fallback_reason.startswith("llm_error") %}
+    <strong>LLM недоступна.</strong>
+    Показан безопасный шаблон, чтобы карточку можно было подготовить без провайдера.
+  {% else %}
+    <strong>Работал безопасный шаблон.</strong>
+    {{ result.meta.fallback_reason }}
+  {% endif %}
 </div>
 {% endif %}
 

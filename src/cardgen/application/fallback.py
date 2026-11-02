@@ -86,6 +86,7 @@ def _build_description(product: ProductInput, missing: list[MissingField]) -> st
     purpose = _first_sentences(_plain_text(product.description), 420)
     if purpose and purpose.lower() not in intro.lower():
         intro = f"{intro} {purpose}"
+    intro = _truncate(intro, 500)
 
     paragraphs = [intro]
 
@@ -110,18 +111,17 @@ def _build_description(product: ProductInput, missing: list[MissingField]) -> st
     paragraphs.append(closing)
 
     text = "\n\n".join(paragraphs)
+    if len(text) > DESCRIPTION_MAX:
+        text = _truncate(text, DESCRIPTION_MAX)
+        if len([item for item in text.split("\n\n") if item.strip()]) < 2:
+            text = f"{text}\n\n{_SAFE_SENTENCES[0]}"
+    if len(text) > DESCRIPTION_MAX:
+        text = text[:DESCRIPTION_MAX]
+
     index = 0
     while len(text) < DESCRIPTION_MIN:
         text = f"{text} {_SAFE_SENTENCES[index % len(_SAFE_SENTENCES)]}"
         index += 1
-
-    if len(text) > DESCRIPTION_MAX:
-        paragraphs = text.split("\n\n")
-        while len(paragraphs) > 1 and len("\n\n".join(paragraphs)) > DESCRIPTION_MAX:
-            paragraphs.pop()
-        text = "\n\n".join(paragraphs)
-        if len(text) > DESCRIPTION_MAX:
-            text = _truncate(text, DESCRIPTION_MAX)
     return text
 
 

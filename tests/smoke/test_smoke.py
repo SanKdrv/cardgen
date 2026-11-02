@@ -20,10 +20,12 @@ ENV_FIXTURE = {
 }
 
 
-def _env() -> dict[str, str]:
+def _env(force_utf8: bool = True) -> dict[str, str]:
     env = os.environ.copy()
     env.update(ENV_FIXTURE)
     env.pop("CARDGEN_API_KEY", None)
+    if not force_utf8:
+        env.pop("PYTHONIOENCODING", None)
     env["PYTHONPATH"] = str(ROOT / "src") + os.pathsep + env.get("PYTHONPATH", "")
     return env
 
@@ -150,6 +152,33 @@ def test_cli_generate_end_to_end(tmp_path: Path) -> None:
     )
     assert second.returncode == 2
     assert "уже существуют" in second.stderr
+
+
+@pytest.mark.smoke
+def test_cli_handles_non_utf8_console(tmp_path: Path) -> None:
+    output = tmp_path / "cards"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "cardgen",
+            "generate",
+            "--provider",
+            "fixture",
+            "--input",
+            str(ROOT / "examples" / "products.json"),
+            "--output",
+            str(output),
+        ],
+        cwd=ROOT,
+        env=_env(force_utf8=False),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    assert len(list(output.glob("*.json"))) == 2
 
 
 @pytest.mark.smoke

@@ -5,6 +5,7 @@ from cardgen.domain.facts import (
     canonical,
     compact,
     detect_missing_fields,
+    find_claim_polarities,
     find_claim_stems,
     infer_category,
     required_fields_for,
@@ -63,11 +64,28 @@ def test_claim_stems_and_names(product: ProductInput) -> None:
 
 
 def test_claim_negation_is_respected() -> None:
-    assert "агрессивн" not in find_claim_stems("неагрессивных жидкостей")
-    assert "агрессивн" not in find_claim_stems("не агрессивных сред")
-    assert "агрессивн" in find_claim_stems("для агрессивных сред")
+    positive, negative = find_claim_polarities("неагрессивных жидкостей")
+    assert "агрессивн" not in positive
+    assert "агрессивн" in negative
+    positive, negative = find_claim_polarities("не агрессивных сред")
+    assert "агрессивн" in negative
+    positive, _ = find_claim_polarities("для агрессивных сред")
+    assert "агрессивн" in positive
     # «нержавеющая» начинается с «не», но это не отрицание стали.
-    assert "нержаве" in find_claim_stems("нержавеющая сталь")
+    positive, _ = find_claim_polarities("нержавеющая сталь")
+    assert "нержаве" in positive
+
+
+def test_claim_negation_in_sentence_context() -> None:
+    positive, negative = find_claim_polarities("Прибор не предназначен для агрессивных сред.")
+    assert "агрессивн" in negative
+    assert "агрессивн" not in positive
+    positive, negative = find_claim_polarities("Поверка не требуется.")
+    assert "поверк" in negative
+    assert "поверк" not in positive
+    positive, negative = find_claim_polarities("Поставляется без сертификата.")
+    assert "сертифик" in negative
+    assert "сертифик" not in positive
 
 
 def test_detect_missing_fields_for_complete_product(product: ProductInput) -> None:
@@ -127,11 +145,12 @@ def test_placeholder_values_are_treated_as_missing() -> None:
         manufacturer="Завод",
         specs={
             "диапазон измерений": "0–1,6 МПа",
-            "класс точности": "—",
-            "присоединение": "н/д",
-            "диаметр корпуса": "нет данных",
-            "питание": "не указано",
-            "интерфейс": "N/A",
+            "класс точности": "н.д.",
+            "присоединение": "нет",
+            "диаметр корпуса": "не указан",
+            "питание": "unknown",
+            "интерфейс": "??",
+            "материал корпуса": "xxx",
         },
     )
     assert product.specs == {"диапазон измерений": "0–1,6 МПа"}

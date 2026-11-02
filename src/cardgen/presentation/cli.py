@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -287,7 +288,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _configure_output() -> None:
+    """Windows-консоль по умолчанию cp1251; кириллица и × должны выводиться."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        with contextlib.suppress(OSError, ValueError):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _configure_output()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     parser = build_parser()
     args = parser.parse_args(argv)

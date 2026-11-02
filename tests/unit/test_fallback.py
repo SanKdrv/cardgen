@@ -62,6 +62,23 @@ def test_template_with_very_long_name() -> None:
     assert all(len(query) <= 120 for query in draft.search_queries)
 
 
+def test_template_with_many_long_specs_still_fits() -> None:
+    specs = {f"параметр {index}": "длинное описание характеристики " * 3 for index in range(1, 21)}
+    product = ProductInput(
+        name="Прибор",
+        manufacturer="Завод",
+        specs=specs,
+        description="Короткое описание.",
+    )
+    missing = detect_missing_fields(product)
+    draft = build_template_draft(product, missing)
+    report = check_draft(product, build_facts(product), draft)
+    assert report.ok, report.violations
+    assert DESCRIPTION_MIN <= len(draft.seo_description) <= DESCRIPTION_MAX
+    paragraphs = [item for item in draft.seo_description.split("\n\n") if item.strip()]
+    assert 2 <= len(paragraphs) <= 3
+
+
 def test_template_queries_are_unique(product: ProductInput) -> None:
     draft = build_template_draft(product, detect_missing_fields(product))
     assert len(draft.search_queries) == len({query.casefold() for query in draft.search_queries})

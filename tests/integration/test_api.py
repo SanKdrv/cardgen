@@ -158,6 +158,19 @@ def test_strict_mode_llm_failure(
     assert response.json()["error"]["type"] == "llm_error"
 
 
+def test_bare_product_keeps_strict_option(
+    demo_products: list[dict[str, Any]],
+    good_draft: dict[str, Any],
+    scripted_factory: Callable[[list[str | Exception]], ScriptedProvider],
+) -> None:
+    provider = scripted_factory([raw(good_draft, seo_description="коротко")])
+    payload = {**demo_products[0], "options": {"allow_fallback": False}}
+    with make_client(provider, max_attempts=1) as client:
+        response = client.post("/api/v1/cards", json=payload)
+    assert response.status_code == 502
+    assert response.json()["error"]["type"] == "validation_failed"
+
+
 def test_default_fallback_returns_200(
     demo_products: list[dict[str, Any]],
     good_draft: dict[str, Any],

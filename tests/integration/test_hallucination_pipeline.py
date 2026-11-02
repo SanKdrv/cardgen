@@ -67,6 +67,36 @@ def _latin_changed_unit(draft: Draft) -> Draft:
     return payload
 
 
+def _unknown_unit(draft: Draft) -> Draft:
+    payload = _copy(draft)
+    payload["seo_description"] += " Рабочее давление — 1,6 psi."
+    return payload
+
+
+def _completely_unknown_unit(draft: Draft) -> Draft:
+    payload = _copy(draft)
+    payload["seo_description"] += " Рабочее давление — 1,6 quux."
+    return payload
+
+
+def _alias_attribute(draft: Draft) -> Draft:
+    payload = _copy(draft)
+    payload["seo_description"] += " Диаметр — 1,5."
+    return payload
+
+
+def _code_fragment(draft: Draft) -> Draft:
+    payload = _copy(draft)
+    payload["seo_description"] += " Присоединение — 1."
+    return payload
+
+
+def _semantic_claim(draft: Draft) -> Draft:
+    payload = _copy(draft)
+    payload["seo_description"] += " Присоединение фланцевое."
+    return payload
+
+
 def _missing_spec(draft: Draft) -> Draft:
     payload = _copy(draft)
     payload["key_specs"].pop()
@@ -111,6 +141,11 @@ MUTATIONS: tuple[tuple[str, Mutation, str], ...] = (
     ("invented_code", _invented_code, "invented_code"),
     ("spaced_code", _spaced_code, "invented_code"),
     ("latin_changed_unit", _latin_changed_unit, "invented_quantity"),
+    ("unknown_unit", _unknown_unit, "invented_quantity"),
+    ("completely_unknown_unit", _completely_unknown_unit, "unknown_unit"),
+    ("alias_attribute", _alias_attribute, "attribute_mismatch"),
+    ("code_fragment", _code_fragment, "attribute_mismatch"),
+    ("semantic_claim", _semantic_claim, "invented_claim"),
     ("missing_spec", _missing_spec, "missing_spec"),
     ("changed_spec", _changed_spec, "spec_value_changed"),
     ("extra_spec", _extra_spec, "unknown_spec"),
@@ -233,6 +268,29 @@ async def test_partial_product_with_swapped_unit_never_leaks(
     assert result.meta.validation.ok is True
     assert "20 мА" not in result.draft.seo_description
     assert "20 мА" not in result.draft.commercial_block
+
+
+async def test_negative_source_cannot_be_turned_positive(
+    product: ProductInput,
+    good_draft: Draft,
+    settings: Settings,
+    scripted_factory: Callable[[list[str | Exception]], ScriptedProvider],
+) -> None:
+    negative_product = product.model_copy(
+        update={
+            "description": ("Прибор не предназначен для агрессивных сред. " "Поверка не требуется.")
+        }
+    )
+    payload = _copy(good_draft)
+    payload["seo_description"] = payload["seo_description"].replace("неагрессивных", "агрессивных")
+    payload["seo_description"] += " Прибор проходит поверку."
+    provider = scripted_factory([_raw(payload)])
+
+    with pytest.raises(ValidationFailedError) as error:
+        await _generator(provider, settings).generate(
+            negative_product, GenerateOptions(allow_fallback=False)
+        )
+    assert "invented_claim" in {getattr(item, "code", "") for item in error.value.violations}
 
 
 def test_equivalent_latin_unit_is_not_rejected(product: ProductInput, good_draft: Draft) -> None:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from ...application.ports import LLMProvider
 from ...core.errors import ConfigurationError
 from ..config import Settings
-from .base import LLMProvider
 from .fixture import FixtureProvider
 from .openai_compat import OpenAICompatibleProvider
 from .template import TemplateProvider

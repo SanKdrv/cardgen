@@ -111,5 +111,7 @@
 
 Роутеры разделены по сценариям (`cards`, `health`, `ui`), зависимости
 берутся из `app.state`, поэтому тесты могут подменить провайдера без
-пересборки приложения. `cardgen.api:app` оставлен тонким shim-модулем,
-чтобы не ломать команду `uvicorn cardgen.api:app` и Docker.
+пересборки приложения. `application` зависит от портов (`ports.py`), а не
+от `infrastructure`: настройки и LLM подключаются в `presentation`.
+`cardgen.api:app` оставлен тонким shim-модулем, чтобы не ломать команду
+`uvicorn cardgen.api:app` и Docker.

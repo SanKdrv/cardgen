@@ -16,10 +16,9 @@ from ..domain.models import (
     GuardViolation,
     ProductInput,
 )
-from ..infrastructure.config import Settings, get_settings
-from ..infrastructure.llm.base import LLMProvider
-from ..infrastructure.llm.parse import parse_draft
 from .fallback import build_template_draft
+from .parsing import parse_draft
+from .ports import LLMProvider, PipelineSettings
 from .prompts import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,
@@ -34,9 +33,9 @@ logger = logging.getLogger(__name__)
 class CardGenerator:
     """Генерирует карточку и гарантирует отсутствие выдуманных фактов."""
 
-    def __init__(self, provider: LLMProvider, settings: Settings | None = None) -> None:
+    def __init__(self, provider: LLMProvider, settings: PipelineSettings) -> None:
         self.provider = provider
-        self.settings = settings or get_settings()
+        self.settings = settings
 
     async def generate(
         self,

@@ -7,8 +7,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 
 from .... import __version__
+from ....application.ports import LLMProvider
 from ....domain.models import HealthResponse
-from ....infrastructure.llm.base import LLMProvider
 from ..dependencies import get_provider
 from ..examples import load_examples
 

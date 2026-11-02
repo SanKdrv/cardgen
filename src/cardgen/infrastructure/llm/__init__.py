@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import LLMProvider
+from ...application.ports import LLMProvider
 from .factory import build_provider
 from .fixture import FixtureProvider
 from .openai_compat import OpenAICompatibleProvider

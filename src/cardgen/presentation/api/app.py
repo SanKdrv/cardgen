@@ -15,9 +15,9 @@ from fastapi.templating import Jinja2Templates
 
 from ... import __version__
 from ...application.pipeline import CardGenerator
+from ...application.ports import LLMProvider
 from ...infrastructure.config import Settings, get_settings
 from ...infrastructure.llm import build_provider
-from ...infrastructure.llm.base import LLMProvider
 from .errors import register_exception_handlers
 from .routes import cards, health, ui
 

@@ -13,11 +13,10 @@ from ....domain.models import (
     BatchGenerateRequest,
     BatchResponse,
     CardResult,
-    GenerateOptions,
     GenerateRequest,
-    ProductInput,
 )
 from ..dependencies import get_generator
+from ..schemas import BareGenerateRequest
 
 router = APIRouter(prefix="/api/v1", tags=["cards"])
 
@@ -28,12 +27,12 @@ router = APIRouter(prefix="/api/v1", tags=["cards"])
     response_model_exclude_none=True,
 )
 async def generate_card(
-    payload: GenerateRequest | ProductInput,
+    payload: GenerateRequest | BareGenerateRequest,
     generator: Annotated[CardGenerator, Depends(get_generator)],
 ) -> CardResult:
     if isinstance(payload, GenerateRequest):
         return await generator.generate(payload.product, payload.options)
-    return await generator.generate(payload, GenerateOptions())
+    return await generator.generate(payload, payload.options)
 
 
 @router.post(

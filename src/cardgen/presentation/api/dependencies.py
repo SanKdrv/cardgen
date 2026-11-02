@@ -12,8 +12,8 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from ...application.pipeline import CardGenerator
+from ...application.ports import LLMProvider
 from ...infrastructure.config import Settings
-from ...infrastructure.llm.base import LLMProvider
 
 
 def get_generator(request: Request) -> CardGenerator:

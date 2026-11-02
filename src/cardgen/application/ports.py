@@ -1,4 +1,4 @@
-"""Провайдер LLM: протокол и общие типы."""
+"""Порты приложения: контракты, которые реализует инфраструктура."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class LLMProvider(Protocol):
-    """Минимальный контракт, которого достаточно пайплайну."""
+    """Минимальный контракт LLM-провайдера, достаточный пайплайну."""
 
     name: str
     model: str
@@ -24,3 +24,10 @@ class LLMProvider(Protocol):
     async def aclose(self) -> None:
         """Освобождает сетевые ресурсы."""
         ...
+
+
+class PipelineSettings(Protocol):
+    """Настройки, которые реально нужны генератору."""
+
+    @property
+    def max_attempts(self) -> int: ...

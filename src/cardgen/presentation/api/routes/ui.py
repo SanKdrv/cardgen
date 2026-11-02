@@ -10,9 +10,9 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from ....application.pipeline import CardGenerator
+from ....application.ports import LLMProvider
 from ....core.errors import CardgenError
 from ....domain.models import GenerateOptions, ProductInput
-from ....infrastructure.llm.base import LLMProvider
 from ..dependencies import get_generator, get_provider, get_templates
 from ..examples import load_examples
 

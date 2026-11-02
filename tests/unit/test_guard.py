@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 from typing import Any
 
 from cardgen.domain.facts import build_facts
@@ -267,6 +269,79 @@ def test_duplicate_spec_under_different_name_is_rejected(
     assert "duplicate_spec" in codes(report)
 
 
+def test_unknown_pressure_units_are_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    for addition in (
+        "Рабочее давление — 1,6 psi.",
+        "Рабочее давление — 1,6 атм.",
+        "Рабочее давление — 1,6 Па.",
+        "Температура — 70 °F.",
+    ):
+        draft, _ = _draft_with_description(good_draft, addition)
+        report = check_draft(product, build_facts(product), draft)
+        assert "invented_quantity" in codes(report), addition
+
+
+def test_completely_unknown_unit_is_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    draft, _ = _draft_with_description(good_draft, "Рабочее давление — 1,6 quux.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "unknown_unit" in codes(report)
+
+
+def test_attribute_aliases_and_codes_are_checked(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    for addition in (
+        "Диаметр — 1,5.",
+        "Точность — 2.",
+        "Диапазон — 1,5.",
+        "Присоединение — 1.",
+    ):
+        draft, _ = _draft_with_description(good_draft, addition)
+        report = check_draft(product, build_facts(product), draft)
+        assert "attribute_mismatch" in codes(report), addition
+
+
+def test_negated_claim_in_source_is_not_a_permission(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    negative_product = product.model_copy(
+        update={
+            "description": ("Прибор не предназначен для агрессивных сред. " "Поверка не требуется.")
+        }
+    )
+    payload = copy.deepcopy(good_draft)
+    payload["seo_description"] = payload["seo_description"].replace("неагрессивных", "агрессивных")
+    payload["seo_description"] += " Прибор проходит поверку."
+    report = check_draft(
+        negative_product,
+        build_facts(negative_product),
+        CardDraft.model_validate(payload),
+    )
+    assert "invented_claim" in codes(report)
+
+
+def test_negative_claim_itself_is_allowed_when_present(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    negative_product = product.model_copy(
+        update={"description": "Прибор не предназначен для агрессивных сред."}
+    )
+    payload = copy.deepcopy(good_draft)
+    payload["seo_description"] = payload["seo_description"].replace(
+        "неагрессивных", "неагрессивных"
+    )
+    report = check_draft(
+        negative_product,
+        build_facts(negative_product),
+        CardDraft.model_validate(payload),
+    )
+    assert "invented_negative_claim" not in codes(report)
+
+
 def test_description_paragraph_count(product: ProductInput, good_draft: dict[str, Any]) -> None:
     paragraphs = good_draft["seo_description"].split("\n\n")
 
@@ -303,3 +378,22 @@ def test_all_fixture_drafts_pass_guard(
             CardDraft.model_validate(fixture_drafts[item.name]),
         )
         assert report.ok, report.violations
+
+
+def test_committed_examples_pass_guard(demo_products: list[dict[str, Any]]) -> None:
+    root = Path(__file__).resolve().parents[2]
+    names = [
+        "01-manometr-pokazyvayuschiy-dm-02",
+        "02-termometr-bimetallicheskiy-tb-1",
+    ]
+    for payload, name in zip(demo_products, names, strict=True):
+        product = ProductInput.model_validate(payload)
+        example = json.loads(
+            (root / "examples" / "output" / f"{name}.json").read_text(encoding="utf-8")
+        )
+        report = check_draft(
+            product,
+            build_facts(product),
+            CardDraft.model_validate(example["draft"]),
+        )
+        assert report.ok, (name, report.violations)

@@ -20,7 +20,7 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 206 тестов, покрытие 90% |
+| Тесты | 232 теста, покрытие 90% |
 | Зависимости | без LangChain и SDK провайдеров |
 
 ![Веб-форма с загруженным демо-товаром](docs/screenshot-index.png)
@@ -198,8 +198,10 @@ CARDGEN_SESSION_HEADER=
 | Проверка | Пример нарушения |
 |---|---|
 | Новые числа | в данных `0–1,6 МПа`, в тексте появилось `2,5 МПа` |
-| Единица и атрибут | `1,6 МПа` превратилось в `1,6 бар`, а `100 мм` — в `100 МПа` |
+| Единица и атрибут | `1,6 МПа` превратилось в `1,6 бар`, `1,6 psi` или `70 °F` |
 | Коды и обозначения | в данных нет `IP65` или `IP 40`, а модель их упомянула |
+| Синонимы атрибутов | «Диаметр — 1,5» при диаметре корпуса 100 мм |
+| Часть кода вместо значения | «Присоединение — 1» при значении `G1/2` |
 | Значения характеристик | `1,5` заменено на `1,6` |
 | Полнота характеристик | из четырёх характеристик потеряна одна |
 | Лишние характеристики | добавлена «степень защиты», которой нет во входе |
@@ -352,7 +354,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 206 тестов, включая smoke
+pytest                          # 232 теста, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .
@@ -398,19 +400,22 @@ src/cardgen/
     facts.py                нормализация и пропуски
     guard.py                анти-галлюцинационная проверка
   application/
+    ports.py                контракты LLM и настроек
+    parsing.py              разбор JSON-ответа модели
     prompts.py              версионируемые промпты
     pipeline.py             оркестрация и ретраи
     fallback.py             безопасный шаблон
     render.py               Markdown
   infrastructure/
     config.py               настройки CARDGEN_*
-    llm/                    провайдеры и разбор ответа
+    llm/                    провайдеры
   presentation/
     api/
       app.py                сборка FastAPI
       dependencies.py       доступ к состоянию приложения
       errors.py             обработчики ошибок
       examples.py           демо-товары
+      schemas.py            HTTP-схемы (голый JSON + options)
       routes/
         cards.py            JSON API
         health.py           /health и /examples

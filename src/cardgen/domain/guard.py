@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import re
 
-from .facts import BENIGN_CODES, FactTable, canonical, claim_name, compact, find_claim_stems
+from .facts import (
+    BENIGN_CODES,
+    KNOWN_UNITS,
+    FactTable,
+    canonical,
+    claim_name,
+    compact,
+    find_claim_polarities,
+)
 from .models import CardDraft, GuardReport, GuardViolation, ProductInput
 
 TITLE_MAX = 70
@@ -34,6 +42,16 @@ _META_PHRASES = (
 )
 _ATTRIBUTE_STOP_RE = re.compile(r"[,;]\s|\.\s|\n|\sи\s|\sили\s|\sпри\s|\sдля\s|\sс\s")
 _ATTRIBUTE_WINDOW = 100
+_LATIN_UNIT_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([A-Za-z]{2,6})(?![A-Za-z0-9])")
+_NON_UNIT_LATIN = frozenset({"max", "off", "on", "no", "ok", "ip", "rs", "dn", "dm"})
+_ATTRIBUTE_ALIASES: dict[str, tuple[str, ...]] = {
+    "диаметр корпуса": ("диаметр",),
+    "класс точности": ("класс", "точность", "погрешность"),
+    "диапазон измерений": ("диапазон", "давление"),
+    "питание": ("питание", "напряжение"),
+    "интерфейс": ("интерфейс", "протокол"),
+    "выходной сигнал": ("выход", "сигнал"),
+}
 
 
 def _add(violations: list[GuardViolation], code: str, field: str, message: str) -> None:
@@ -211,6 +229,7 @@ def _check_invented_tokens(
     invented_numbers: dict[str, set[str]] = {}
     invented_codes: dict[str, set[str]] = {}
     invented_quantities: dict[str, set[str]] = {}
+    invented_units: dict[str, set[str]] = {}
 
     for field, text in texts.items():
         for number in facts.numbers_in(text):
@@ -226,6 +245,10 @@ def _check_invented_tokens(
         for number, unit in facts.quantities_in(text):
             if number in facts.numbers and (number, unit) not in facts.quantity_pairs:
                 invented_quantities.setdefault(f"{number} {unit}", set()).add(field)
+        for match in _LATIN_UNIT_RE.finditer(text):
+            unit = canonical(match.group(2))
+            if unit not in KNOWN_UNITS and unit not in _NON_UNIT_LATIN:
+                invented_units.setdefault(unit, set()).add(field)
 
     reported: set[str] = set()
     for token, fields in list(invented_numbers.items()):
@@ -262,7 +285,53 @@ def _check_invented_tokens(
             ", ".join(sorted(fields)),
             f"значение «{token}» не подтверждено исходной характеристикой",
         )
+    for token, fields in list(invented_units.items()):
+        if len(reported) >= MAX_TOKEN_VIOLATIONS:
+            break
+        if token in reported:
+            continue
+        reported.add(token)
+        _add(
+            violations,
+            "unknown_unit",
+            ", ".join(sorted(fields)),
+            f"единица «{token}» отсутствует в исходных данных",
+        )
     return reported
+
+
+def _attribute_occurrences(normalized: str, source_keys: list[str]) -> list[tuple[int, int, str]]:
+    """Находит названия характеристик и их короткие синонимы в тексте."""
+    exact: list[tuple[int, int, str]] = []
+    for key in source_keys:
+        normalized_key = canonical(key)
+        pattern = rf"(?<![а-яёa-z0-9]){re.escape(normalized_key)}(?![а-яёa-z0-9])"
+        for match in re.finditer(pattern, normalized):
+            exact.append((match.start(), match.end(), key))
+
+    occurrences = list(exact)
+    for key in source_keys:
+        normalized_key = canonical(key)
+        for target, aliases in _ATTRIBUTE_ALIASES.items():
+            if target not in normalized_key:
+                continue
+            for alias in aliases:
+                pattern = rf"(?<![а-яё]){re.escape(alias)}(?![а-яё])"
+                for match in re.finditer(pattern, normalized):
+                    if any(start <= match.start() < end for start, end, _ in exact):
+                        continue
+                    prefix = normalized[max(0, match.start() - 20) : match.start()]
+                    tail = normalized[match.end() : match.end() + 20]
+                    if alias == "диаметр" and tail.lstrip().startswith(("присоедин", "резьб")):
+                        continue
+                    if alias == "класс" and tail.lstrip().startswith(("защит", "точн", "изоляц")):
+                        continue
+                    if alias == "диапазон" and ("температур" in prefix or "рабоч" in prefix):
+                        continue
+                    occurrences.append((match.start(), match.end(), key))
+
+    unique = set(occurrences)
+    return sorted(unique)
 
 
 def _check_attribute_numbers(
@@ -275,7 +344,8 @@ def _check_attribute_numbers(
     """Проверяет числа рядом с названием характеристики.
 
     Без этого «класс точности — 20» проходил, если 20 встречалось в другом
-    параметре: например, в резьбе M20×1,5.
+    параметре: например, в резьбе M20×1,5. Синонимы («точность», «диаметр»)
+    тоже учитываются.
     """
     source_keys = list(product.specs)
     if not source_keys:
@@ -287,37 +357,52 @@ def _check_attribute_numbers(
         "commercial_block": draft.commercial_block,
         "search_queries": " \n ".join(draft.search_queries),
     }
-    canonical_keys = [(key, canonical(key)) for key in source_keys]
 
     for field, text in texts.items():
         normalized = canonical(text)
-        for key, normalized_key in canonical_keys:
-            for match in re.finditer(re.escape(normalized_key), normalized):
-                tail_start = match.end()
-                tail = normalized[tail_start : tail_start + _ATTRIBUTE_WINDOW]
-                cut = len(tail)
-                stop = _ATTRIBUTE_STOP_RE.search(tail)
-                if stop:
-                    cut = min(cut, stop.start())
-                for other_key, other_normalized in canonical_keys:
-                    if other_key == key:
-                        continue
-                    index = tail.find(other_normalized)
-                    if index >= 0:
-                        cut = min(cut, index)
-                segment = tail[:cut]
-                allowed = facts.numbers_in(product.specs[key])
-                for number in facts.numbers_in(segment):
-                    token = f"{number}@{key}"
-                    if number in allowed or token in already_reported:
-                        continue
+        occurrences = _attribute_occurrences(normalized, source_keys)
+        for index, (start, end, key) in enumerate(occurrences):
+            tail = normalized[end : end + _ATTRIBUTE_WINDOW]
+            cut = len(tail)
+            stop = _ATTRIBUTE_STOP_RE.search(tail)
+            if stop:
+                cut = min(cut, stop.start())
+            for other_start, _, _ in occurrences[index + 1 :]:
+                if other_start > end:
+                    cut = min(cut, other_start - end)
+                    break
+            segment = tail[:cut]
+
+            allowed = facts.numbers_in(product.specs[key])
+            for number in facts.numbers_in(segment):
+                token = f"{number}@{key}"
+                if number in allowed or token in already_reported:
+                    continue
+                already_reported.add(token)
+                _add(
+                    violations,
+                    "attribute_mismatch",
+                    field,
+                    f"число «{number}» рядом с «{key}» не встречается "
+                    f"в значении этой характеристики",
+                )
+
+            source_codes = facts.codes_in(product.specs[key])
+            segment_compact = compact(segment)
+            segment_numbers = facts.numbers_in(segment)
+            if (
+                source_codes
+                and segment_numbers
+                and not any(code in segment_compact for code in source_codes)
+            ):
+                token = f"code@{key}@{start}"
+                if token not in already_reported:
                     already_reported.add(token)
                     _add(
                         violations,
                         "attribute_mismatch",
                         field,
-                        f"число «{number}» рядом с «{key}» не встречается "
-                        f"в значении этой характеристики",
+                        f"рядом с «{key}» не указан код из значения этой характеристики",
                     )
 
 
@@ -333,21 +418,29 @@ def _check_claims(
         "commercial_block": draft.commercial_block,
         "search_queries": " \n ".join(draft.search_queries),
     }
-    fact_stems = find_claim_stems(facts.text)
+    fact_positive, fact_negative = find_claim_polarities(facts.text)
     for field, text in texts.items():
-        for stem in find_claim_stems(text):
+        positive, negative = find_claim_polarities(text)
+        for stem in sorted(positive | negative):
             if stem in already_reported:
                 continue
-            if stem in fact_stems:
+            if stem in positive and stem not in fact_positive:
+                already_reported.add(stem)
+                _add(
+                    violations,
+                    "invented_claim",
+                    field,
+                    f"упоминание «{claim_name(stem)}» отсутствует в исходных данных",
+                )
                 continue
-            already_reported.add(stem)
-            _add(
-                violations,
-                "invented_claim",
-                field,
-                f"упоминание «{claim_name(stem)}» отсутствует в исходных данных",
-            )
-            break
+            if stem in negative and stem not in fact_negative:
+                already_reported.add(stem)
+                _add(
+                    violations,
+                    "invented_negative_claim",
+                    field,
+                    f"отрицание «{claim_name(stem)}» не подтверждено исходными данными",
+                )
 
 
 def _check_markdown(draft: CardDraft, violations: list[GuardViolation]) -> None:
