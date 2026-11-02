@@ -115,3 +115,19 @@
 от `infrastructure`: настройки и LLM подключаются в `presentation`.
 `cardgen.api:app` оставлен тонким shim-модулем, чтобы не ломать команду
 `uvicorn cardgen.api:app` и Docker.
+
+## 11. Защита от параллельных запросов
+
+**Решение:** семафор на процесс + in-memory rate limit на IP.
+
+**Почему:** на проде несколько контент-менеджеров могут одновременно
+нажать «Сгенерировать», а batch-эндпоинт — запустить пачку. Без ограничений
+это упирается в лимиты провайдера и RAM.
+
+**Как:** `CardGenerator` держит `asyncio.Semaphore(CARDGEN_MAX_CONCURRENCY)`;
+ожидание дольше `CARDGEN_CONCURRENCY_TIMEOUT_S` даёт `503` с `Retry-After`.
+Middleware считает запросы на IP в скользящем окне и возвращает `429` после
+`CARDGEN_RATE_LIMIT_PER_MINUTE`. `health` и `examples` не ограничиваются.
+
+**Цена:** это защита одного процесса. Для нескольких реплик нужен Redis
+и внешняя очередь; для жёсткого SLA — отдельный API-gateway.

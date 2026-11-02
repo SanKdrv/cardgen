@@ -20,6 +20,7 @@ def make_client(
     provider: Any | None = None,
     *,
     max_attempts: int = 2,
+    rate_limit_per_minute: int = 60,
 ) -> TestClient:
     active_provider = provider or FixtureProvider()
     settings = Settings(
@@ -29,6 +30,7 @@ def make_client(
         max_attempts=max_attempts,
         max_retries=1,
         retry_backoff_s=0,
+        rate_limit_per_minute=rate_limit_per_minute,
     )
     return TestClient(create_app(settings=settings, provider=active_provider))
 
@@ -55,6 +57,21 @@ def test_health_reports_missing_key() -> None:
     with make_client(provider) as client:
         body = client.get("/health").json()
     assert body["provider_ready"] is False
+
+
+def test_rate_limit_blocks_after_burst(
+    demo_products: list[dict[str, Any]],
+) -> None:
+    with make_client(rate_limit_per_minute=2) as client:
+        for _ in range(2):
+            response = client.post("/api/v1/cards", json={"product": demo_products[0]})
+            assert response.status_code == 200
+        blocked = client.post("/api/v1/cards", json={"product": demo_products[0]})
+        assert blocked.status_code == 429
+        assert blocked.json()["error"]["type"] == "rate_limited"
+        assert int(blocked.headers["Retry-After"]) >= 1
+        assert blocked.headers["x-request-id"]
+        assert client.get("/health").status_code == 200
 
 
 def test_examples_endpoint(demo_products: list[dict[str, Any]]) -> None:

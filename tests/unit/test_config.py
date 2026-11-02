@@ -14,6 +14,8 @@ def test_defaults() -> None:
     assert settings.max_attempts == 2
     assert settings.timeout_s == 180
     assert settings.max_output_tokens == 16000
+    assert settings.max_concurrency == 4
+    assert settings.rate_limit_per_minute == 60
     assert settings.session_header == "x-opencode-session"
 
 

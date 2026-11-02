@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
-from ..core.errors import DraftParseError, LLMError, ValidationFailedError
+from ..core.errors import (
+    ConcurrencyLimitError,
+    DraftParseError,
+    LLMError,
+    ValidationFailedError,
+)
 from ..domain.facts import build_facts, detect_missing_fields
 from ..domain.guard import check_draft, summarize_violations
 from ..domain.models import (
@@ -31,13 +37,30 @@ logger = logging.getLogger(__name__)
 
 
 class CardGenerator:
-    """Генерирует карточку и гарантирует отсутствие выдуманных фактов."""
+    """Генерирует карточку и снижает риск выдуманных фактов детерминированной проверкой."""
 
     def __init__(self, provider: LLMProvider, settings: PipelineSettings) -> None:
         self.provider = provider
         self.settings = settings
+        self._semaphore = asyncio.Semaphore(settings.max_concurrency)
 
     async def generate(
+        self,
+        product: ProductInput,
+        options: GenerateOptions | None = None,
+    ) -> CardResult:
+        """Ограничивает число одновременных генераций на процесс."""
+        try:
+            async with asyncio.timeout(self.settings.concurrency_timeout_s):
+                async with self._semaphore:
+                    return await self._generate_unchecked(product, options)
+        except TimeoutError as exc:
+            raise ConcurrencyLimitError(
+                "сервис занят: превышен лимит одновременных генераций",
+                self.settings.concurrency_timeout_s,
+            ) from exc
+
+    async def _generate_unchecked(
         self,
         product: ProductInput,
         options: GenerateOptions | None = None,

@@ -9,7 +9,12 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from ...core.errors import CardgenError, LLMError, ValidationFailedError
+from ...core.errors import (
+    CardgenError,
+    ConcurrencyLimitError,
+    LLMError,
+    ValidationFailedError,
+)
 from ...domain.models import ErrorDetail, ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -64,6 +69,19 @@ async def handle_cardgen_error(_request: Request, exc: CardgenError) -> JSONResp
     return _error_response(500, "cardgen_error", str(exc))
 
 
+async def handle_concurrency_limit(_request: Request, exc: ConcurrencyLimitError) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "type": "service_busy",
+                "message": exc.message,
+            }
+        },
+        headers={"Retry-After": str(max(1, int(exc.timeout_s)))},
+    )
+
+
 async def handle_unexpected(request: Request, _exc: Exception) -> JSONResponse:
     logger.exception(
         "Необработанная ошибка (request_id=%s)",
@@ -77,6 +95,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     handlers: list[tuple[type[Exception], Any]] = [
         (RequestValidationError, handle_validation_error),
         (ValidationFailedError, handle_validation_failed),
+        (ConcurrencyLimitError, handle_concurrency_limit),
         (LLMError, handle_llm_error),
         (CardgenError, handle_cardgen_error),
         (Exception, handle_unexpected),

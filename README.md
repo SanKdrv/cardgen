@@ -1,6 +1,7 @@
 # cardgen — AI-карточки контрольно-измерительных приборов
 
 [![ci](https://github.com/SanKdrv/cardgen/actions/workflows/ci.yml/badge.svg)](https://github.com/SanKdrv/cardgen/actions/workflows/ci.yml)
+[![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/SanKdrv/cardgen/main/.github/badges/coverage.json)](https://github.com/SanKdrv/cardgen/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Сервис принимает данные о приборе — JSON или заполненную форму — и возвращает
@@ -20,7 +21,8 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 247 тестов, покрытие 92% |
+| Тесты | 251 тест, покрытие 92% |
+| Нагрузка | до 4 параллельных генераций и 60 запросов/мин на IP |
 | Зависимости | без LangChain и SDK провайдеров |
 
 ![Веб-форма с загруженным демо-товаром](docs/screenshot-index.png)
@@ -160,6 +162,9 @@ CARDGEN_SESSION_HEADER=
 | `CARDGEN_TIMEOUT_S` | `180` | таймаут запроса |
 | `CARDGEN_TEMPERATURE` | `0.2` | температура генерации |
 | `CARDGEN_MAX_OUTPUT_TOKENS` | `16000` | запас токенов: reasoning-модели тратят часть на размышление |
+| `CARDGEN_MAX_CONCURRENCY` | `4` | одновременных генераций на процесс |
+| `CARDGEN_CONCURRENCY_TIMEOUT_S` | `30` | сколько ждать свободный слот, затем 503 |
+| `CARDGEN_RATE_LIMIT_PER_MINUTE` | `60` | запросов в минуту на IP; `0` отключает |
 | `CARDGEN_JSON_MODE` | `true` | просить `response_format=json_object` |
 | `CARDGEN_EXTRA_HEADERS` | `{}` | дополнительные заголовки JSON-объектом |
 | `CARDGEN_LOG_LEVEL` | `INFO` | уровень логов |
@@ -198,6 +203,18 @@ CARDGEN_SESSION_HEADER=
    заново. При повторной неудаче включается детерминированный шаблон.
 6. **Результат** отдаётся в JSON и Markdown с метаданными: провайдер, модель,
    число попыток, задержка, версия промпта и отчёт проверки.
+
+### Защита от параллельных запросов
+
+- **Семафор на генерацию:** не больше `CARDGEN_MAX_CONCURRENCY` одновременных
+  карточек на процесс; при ожидании дольше `CARDGEN_CONCURRENCY_TIMEOUT_S`
+  API отвечает `503` с `Retry-After`.
+- **Rate limit на IP:** скользящее окно `CARDGEN_RATE_LIMIT_PER_MINUTE`
+  запросов в минуту для `POST /api/v1/cards`, batch и `/ui/generate`;
+  при превышении — `429` и `Retry-After`. `/health` и `/examples` не
+  ограничиваются.
+- Это примитивная защита одного инстанса; для нескольких реплик лимит нужно
+  переносить в Redis, а очередь — во внешний брокер.
 
 ### Что именно проверяет guard
 
@@ -361,7 +378,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 247 тестов, включая smoke
+pytest                          # 251 тест, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .

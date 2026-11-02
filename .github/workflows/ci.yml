@@ -5,6 +5,9 @@ on:
     branches: [main, "feature/**"]
   pull_request:
 
+permissions:
+  contents: write
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -28,7 +31,22 @@ jobs:
       - name: Mypy
         run: mypy src
       - name: Тесты с покрытием
-        run: pytest --cov=cardgen --cov-report=term-missing
+        run: pytest --cov=cardgen --cov-report=term-missing --cov-report=json:coverage.json
+      - name: Обновить данные бейджа покрытия
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: python scripts/coverage_badge.py
+      - name: Закоммитить бейдж покрытия
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.json
+          if git diff --cached --quiet; then
+            echo "coverage badge is up to date"
+            exit 0
+          fi
+          git commit -m "chore: обновить бейдж покрытия" -m "Автоматическое обновление после зелёного прогона тестов."
+          git push
       - name: Проверка конфигурации офлайн-режима
         env:
           CARDGEN_PROVIDER: fixture

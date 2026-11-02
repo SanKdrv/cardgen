@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -19,12 +20,14 @@ from ...application.ports import LLMProvider
 from ...infrastructure.config import Settings, get_settings
 from ...infrastructure.llm import build_provider
 from .errors import register_exception_handlers
+from .rate_limit import RateLimiter
 from .routes import cards, health, ui
 
 _APP_DIR = Path(__file__).resolve().parent
 _PRESENTATION_DIR = _APP_DIR.parent
 _TEMPLATES_DIR = _PRESENTATION_DIR / "templates"
 _STATIC_DIR = _PRESENTATION_DIR / "static"
+_LIMITED_PATHS = frozenset({"/api/v1/cards", "/api/v1/cards/batch", "/ui/generate"})
 
 
 def create_app(
@@ -39,6 +42,11 @@ def create_app(
     active_provider = provider or build_provider(active_settings)
     generator = CardGenerator(active_provider, active_settings)
     templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+    limiter = (
+        RateLimiter(active_settings.rate_limit_per_minute)
+        if active_settings.rate_limit_per_minute > 0
+        else None
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -59,6 +67,7 @@ def create_app(
     app.state.provider = active_provider
     app.state.generator = generator
     app.state.templates = templates
+    app.state.rate_limiter = limiter
 
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
@@ -66,6 +75,27 @@ def create_app(
     async def request_id_middleware(request: Request, call_next: Any) -> Any:
         request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
         request.state.request_id = request_id
+
+        path = request.url.path.rstrip("/") or "/"
+        if limiter is not None and path in _LIMITED_PATHS:
+            client = request.client.host if request.client else "unknown"
+            allowed, retry_after = await limiter.acquire(client)
+            if not allowed:
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "error": {
+                            "type": "rate_limited",
+                            "message": "Слишком много запросов. Попробуйте позже.",
+                        }
+                    },
+                    headers={
+                        "Retry-After": str(retry_after or 1),
+                        "X-RateLimit-Limit": str(active_settings.rate_limit_per_minute),
+                        "x-request-id": request_id,
+                    },
+                )
+
         response = await call_next(request)
         response.headers["x-request-id"] = request_id
         return response

@@ -31,3 +31,9 @@ class PipelineSettings(Protocol):
 
     @property
     def max_attempts(self) -> int: ...
+
+    @property
+    def max_concurrency(self) -> int: ...
+
+    @property
+    def concurrency_timeout_s(self) -> float: ...

@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     json_mode: bool = True
     log_level: str = "INFO"
 
+    max_concurrency: int = Field(default=4, ge=1, le=50)
+    concurrency_timeout_s: float = Field(default=30.0, gt=0, le=300)
+    rate_limit_per_minute: int = Field(default=60, ge=0, le=10_000)
+
     @field_validator("base_url")
     @classmethod
     def _validate_base_url(cls, value: str) -> str:

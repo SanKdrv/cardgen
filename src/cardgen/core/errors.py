@@ -60,3 +60,12 @@ class ValidationFailedError(CardgenError):
         super().__init__(message)
         self.message = message
         self.violations = violations
+
+
+class ConcurrencyLimitError(CardgenError):
+    """Сервис занят: не удалось получить слот генерации за отведённое время."""
+
+    def __init__(self, message: str, timeout_s: float) -> None:
+        super().__init__(message)
+        self.message = message
+        self.timeout_s = timeout_s
