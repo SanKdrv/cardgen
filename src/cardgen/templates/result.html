@@ -32,7 +32,7 @@
   <strong>Не хватает данных ({{ result.missing_fields | length }}):</strong>
   <ul class="inline-list">
     {% for item in result.missing_fields %}
-      <li><b>{{ item.field }}</b> — {{ item.hint }}</li>
+      <li><b>{{ item.field }}</b> — {{ item.value }}: {{ item.hint }}</li>
     {% endfor %}
   </ul>
 </div>

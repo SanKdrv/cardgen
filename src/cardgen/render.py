@@ -48,7 +48,9 @@ def to_markdown(result: CardResult) -> str:
 
     if result.missing_fields:
         lines.extend(["## Недостающие данные", ""])
-        lines.extend(f"- **{item.field}** — {item.hint}" for item in result.missing_fields)
+        lines.extend(
+            f"- **{item.field}** — {item.value}: {item.hint}" for item in result.missing_fields
+        )
         lines.append("")
 
     if result.warnings:

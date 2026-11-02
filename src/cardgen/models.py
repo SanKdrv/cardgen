@@ -130,6 +130,7 @@ class MissingField(BaseModel):
 
     field: str
     hint: str
+    value: str = "данных нет"
 
 
 class GuardViolation(BaseModel):

@@ -48,6 +48,7 @@ def test_markdown_shows_missing_fields(partial_product: ProductInput) -> None:
     markdown = to_markdown(build_result(partial_product))
     assert "## Недостающие данные" in markdown
     assert "класс точности" in markdown
+    assert "данных нет" in markdown
 
 
 def test_markdown_escapes_pipes(product: ProductInput) -> None:

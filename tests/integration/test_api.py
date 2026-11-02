@@ -82,6 +82,7 @@ def test_generate_partial_product(demo_products: list[dict[str, Any]]) -> None:
         response = client.post("/api/v1/cards", json={"product": demo_products[1]})
     assert response.status_code == 200
     assert [item["field"] for item in response.json()["missing_fields"]] == ["класс точности"]
+    assert response.json()["missing_fields"][0]["value"] == "данных нет"
 
 
 def test_invalid_input_returns_422(demo_products: list[dict[str, Any]]) -> None:
