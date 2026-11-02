@@ -70,6 +70,22 @@ _UNIT_VALUES = (
     "₽",
     "$",
     "€",
+    "mpa",
+    "kpa",
+    "bar",
+    "mm",
+    "cm",
+    "ma",
+    "m3/h",
+    "l/min",
+    "rpm",
+    "kg",
+    "min",
+    "hz",
+    "kw",
+    "ohm",
+    "db",
+    "c",
 )
 _UNIT_ALTERNATION = "|".join(
     re.escape(unit) for unit in sorted(_UNIT_VALUES, key=len, reverse=True)
@@ -199,7 +215,25 @@ def _normalize_number(value: str) -> str:
 
 def _normalize_unit(value: str) -> str:
     unit = value.lower().replace("℃", "°c").replace("°с", "°c")
-    return unit.replace(" ", "")
+    aliases = {
+        "mpa": "мпа",
+        "kpa": "кпа",
+        "bar": "бар",
+        "mm": "мм",
+        "cm": "см",
+        "ma": "ма",
+        "m3/h": "м3/ч",
+        "l/min": "л/мин",
+        "rpm": "об/мин",
+        "kg": "кг",
+        "min": "мин",
+        "hz": "гц",
+        "kw": "квт",
+        "ohm": "ом",
+        "db": "дб",
+        "c": "°c",
+    }
+    return aliases.get(unit, unit.replace(" ", ""))
 
 
 def _segment_quantity_pairs(segment: str) -> set[tuple[str, str]]:

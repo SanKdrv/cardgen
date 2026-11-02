@@ -32,6 +32,8 @@ _META_PHRASES = (
     "описание составлено",
     "в карточке указаны",
 )
+_ATTRIBUTE_STOP_RE = re.compile(r"[,;]\s|\.\s|\n|\sи\s|\sили\s|\sпри\s|\sдля\s|\sс\s")
+_ATTRIBUTE_WINDOW = 100
 
 
 def _add(violations: list[GuardViolation], code: str, field: str, message: str) -> None:
@@ -166,6 +168,14 @@ def _check_specs(
                 f"характеристика «{item.name}» отсутствует во входных данных",
             )
             continue
+        if source_key in matched_sources:
+            _add(
+                violations,
+                "duplicate_spec",
+                "key_specs",
+                f"характеристика «{source_key}» указана несколько раз под разными названиями",
+            )
+            continue
         matched_sources.add(source_key)
 
         if _normalize_value(item.value) != _normalize_value(product.specs[source_key]):
@@ -255,6 +265,62 @@ def _check_invented_tokens(
     return reported
 
 
+def _check_attribute_numbers(
+    product: ProductInput,
+    facts: FactTable,
+    draft: CardDraft,
+    violations: list[GuardViolation],
+    already_reported: set[str],
+) -> None:
+    """Проверяет числа рядом с названием характеристики.
+
+    Без этого «класс точности — 20» проходил, если 20 встречалось в другом
+    параметре: например, в резьбе M20×1,5.
+    """
+    source_keys = list(product.specs)
+    if not source_keys:
+        return
+
+    texts = {
+        "seo_title": draft.seo_title,
+        "seo_description": draft.seo_description,
+        "commercial_block": draft.commercial_block,
+        "search_queries": " \n ".join(draft.search_queries),
+    }
+    canonical_keys = [(key, canonical(key)) for key in source_keys]
+
+    for field, text in texts.items():
+        normalized = canonical(text)
+        for key, normalized_key in canonical_keys:
+            for match in re.finditer(re.escape(normalized_key), normalized):
+                tail_start = match.end()
+                tail = normalized[tail_start : tail_start + _ATTRIBUTE_WINDOW]
+                cut = len(tail)
+                stop = _ATTRIBUTE_STOP_RE.search(tail)
+                if stop:
+                    cut = min(cut, stop.start())
+                for other_key, other_normalized in canonical_keys:
+                    if other_key == key:
+                        continue
+                    index = tail.find(other_normalized)
+                    if index >= 0:
+                        cut = min(cut, index)
+                segment = tail[:cut]
+                allowed = facts.numbers_in(product.specs[key])
+                for number in facts.numbers_in(segment):
+                    token = f"{number}@{key}"
+                    if number in allowed or token in already_reported:
+                        continue
+                    already_reported.add(token)
+                    _add(
+                        violations,
+                        "attribute_mismatch",
+                        field,
+                        f"число «{number}» рядом с «{key}» не встречается "
+                        f"в значении этой характеристики",
+                    )
+
+
 def _check_claims(
     facts: FactTable,
     draft: CardDraft,
@@ -314,6 +380,7 @@ def check_draft(product: ProductInput, facts: FactTable, draft: CardDraft) -> Gu
     _check_text_shape(draft, violations)
     _check_specs(product, draft, violations)
     reported = _check_invented_tokens(facts, draft, violations)
+    _check_attribute_numbers(product, facts, draft, violations, reported)
     _check_claims(facts, draft, violations, reported)
     _check_markdown(draft, violations)
 

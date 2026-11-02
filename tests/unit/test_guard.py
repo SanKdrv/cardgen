@@ -222,6 +222,51 @@ def test_same_number_with_other_unit_on_partial_product(
     assert "invented_quantity" in codes(report)
 
 
+def test_unitless_number_from_other_attribute_is_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    draft, _ = _draft_with_description(good_draft, "Класс точности — 100.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "attribute_mismatch" in codes(report)
+
+
+def test_attribute_swap_with_existing_number_is_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    draft, _ = _draft_with_description(good_draft, "Диапазон измерений — 1,5 МПа.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "attribute_mismatch" in codes(report)
+
+
+def test_equivalent_latin_unit_is_allowed(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    draft, _ = _draft_with_description(good_draft, "Диаметр корпуса — 100 mm.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "invented_quantity" not in codes(report)
+
+
+def test_changed_latin_unit_is_rejected(product: ProductInput, good_draft: dict[str, Any]) -> None:
+    draft, _ = _draft_with_description(good_draft, "Рабочее давление — 1,6 bar.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "invented_quantity" in codes(report)
+
+
+def test_hyphenated_code_is_rejected(product: ProductInput, good_draft: dict[str, Any]) -> None:
+    draft, _ = _draft_with_description(good_draft, "Степень защиты IP-40.")
+    report = check_draft(product, build_facts(product), draft)
+    assert "invented_code" in codes(report)
+
+
+def test_duplicate_spec_under_different_name_is_rejected(
+    product: ProductInput, good_draft: dict[str, Any]
+) -> None:
+    payload = copy.deepcopy(good_draft)
+    payload["key_specs"].append({"name": "класс точности прибора", "value": "1,5"})
+    report = check_draft(product, build_facts(product), CardDraft.model_validate(payload))
+    assert "duplicate_spec" in codes(report)
+
+
 def test_description_paragraph_count(product: ProductInput, good_draft: dict[str, Any]) -> None:
     paragraphs = good_draft["seo_description"].split("\n\n")
 
