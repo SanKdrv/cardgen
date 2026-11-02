@@ -193,8 +193,7 @@ class OpenAICompatibleProvider:
             )
         return LLMResponseError(f"провайдер вернул HTTP {status}: {body}", status_code=status)
 
-    @staticmethod
-    def _extract_content(response: httpx.Response) -> str:
+    def _extract_content(self, response: httpx.Response) -> str:
         try:
             data: Any = response.json()
         except ValueError as exc:
@@ -223,5 +222,11 @@ class OpenAICompatibleProvider:
             content = "".join(parts)
 
         if not isinstance(content, str) or not content.strip():
+            reasoning = message.get("reasoning_content") if isinstance(message, dict) else None
+            if reasoning or first.get("finish_reason") == "length":
+                raise LLMResponseError(
+                    "модель израсходовала лимит токенов на reasoning и не вернула ответ. "
+                    f"Увеличьте CARDGEN_MAX_OUTPUT_TOKENS (сейчас {self._max_output_tokens})."
+                )
             raise LLMResponseError("провайдер вернул пустой ответ")
         return content

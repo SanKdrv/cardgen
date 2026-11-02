@@ -17,7 +17,7 @@
 | API | FastAPI + Pydantic v2 |
 | LLM | любой OpenAI-совместимый API: OpenCode Go, OpenAI, DeepSeek, Ollama, vLLM |
 | Интерфейсы | JSON API, веб-форма, CLI |
-| Тесты | 142 теста, покрытие 90% |
+| Тесты | 143 теста, покрытие 90% |
 | Зависимости | без LangChain и SDK провайдеров |
 
 ![Веб-форма с загруженным демо-товаром](docs/screenshot-index.png)
@@ -52,9 +52,9 @@
 
 ![Страница результата](docs/screenshot-result.png)
 
-Примеры зафиксированы в офлайн-режиме `CARDGEN_PROVIDER=fixture`: их можно
-воспроизвести без ключа и сети. С реальным ключом тот же пайплайн делает
-живой запрос к модели — команда ниже.
+Примеры получены живым прогоном через OpenCode Go (`deepseek-v4.1-flash`):
+по одному обращению к модели на товар, без fallback. Воспроизвести без ключа
+можно в офлайн-режиме `CARDGEN_PROVIDER=fixture` — команда ниже.
 
 ```bash
 CARDGEN_PROVIDER=openai cardgen generate \
@@ -144,8 +144,9 @@ CARDGEN_SESSION_HEADER=
 | `CARDGEN_SESSION_HEADER` | `x-opencode-session` | заголовок сессии для шлюза |
 | `CARDGEN_MAX_ATTEMPTS` | `2` | попытки LLM с корректировкой |
 | `CARDGEN_MAX_RETRIES` | `3` | HTTP-ретраи на 429/5xx |
-| `CARDGEN_TIMEOUT_S` | `60` | таймаут запроса |
+| `CARDGEN_TIMEOUT_S` | `180` | таймаут запроса |
 | `CARDGEN_TEMPERATURE` | `0.2` | температура генерации |
+| `CARDGEN_MAX_OUTPUT_TOKENS` | `8000` | запас токенов: reasoning-модели тратят часть на размышление |
 | `CARDGEN_JSON_MODE` | `true` | просить `response_format=json_object` |
 | `CARDGEN_EXTRA_HEADERS` | `{}` | дополнительные заголовки JSON-объектом |
 | `CARDGEN_LOG_LEVEL` | `INFO` | уровень логов |
@@ -236,7 +237,7 @@ curl -s http://127.0.0.1:8000/api/v1/cards \
     "attempts": 1,
     "fallback_used": false,
     "latency_ms": 4210,
-    "prompt_version": "2026-11-02.1",
+    "prompt_version": "2026-11-02.2",
     "validation": {"ok": true, "violations": [], "stats": {}}
   },
   "markdown": "# Манометр показывающий DM 02\n…"
@@ -336,7 +337,7 @@ CARDGEN_PROVIDER=template cardgen generate -i examples/products.json -o artifact
 ## Тесты и качество кода
 
 ```bash
-pytest                          # 142 теста, включая smoke
+pytest                          # 143 теста, включая smoke
 pytest -m "not smoke"           # быстрый набор
 pytest --cov=cardgen            # покрытие (порог 85%)
 ruff check . && ruff format --check .

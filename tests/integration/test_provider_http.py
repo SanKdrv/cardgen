@@ -189,6 +189,27 @@ async def test_missing_choices_and_empty_content() -> None:
                 await provider.complete(system="s", user="u")
 
 
+async def test_empty_content_with_reasoning_reports_token_limit() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": "length",
+                        "message": {"content": "", "reasoning_content": "долго думал"},
+                    }
+                ]
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(client, max_output_tokens=1234)
+        with pytest.raises(LLMResponseError, match="reasoning") as error:
+            await provider.complete(system="s", user="u")
+    assert "1234" in str(error.value)
+
+
 async def test_error_object_in_200_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"error": {"message": "quota"}})

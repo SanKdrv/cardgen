@@ -12,6 +12,8 @@ def test_defaults() -> None:
     assert settings.model == "deepseek-v4.1-flash"
     assert settings.base_url == "https://opencode.ai/zen/go/v1"
     assert settings.max_attempts == 2
+    assert settings.timeout_s == 180
+    assert settings.max_output_tokens == 8000
     assert settings.session_header == "x-opencode-session"
 
 

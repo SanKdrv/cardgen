@@ -34,12 +34,12 @@ class Settings(BaseSettings):
     session_prefix: str = "ses_"
     extra_headers: dict[str, str] = Field(default_factory=dict)
 
-    timeout_s: float = Field(default=60.0, gt=0, le=600)
+    timeout_s: float = Field(default=180.0, gt=0, le=600)
     max_attempts: int = Field(default=2, ge=1, le=5)
     max_retries: int = Field(default=3, ge=1, le=10)
     retry_backoff_s: float = Field(default=0.5, ge=0, le=30)
     temperature: float = Field(default=0.2, ge=0, le=2)
-    max_output_tokens: int = Field(default=2000, ge=200, le=32_000)
+    max_output_tokens: int = Field(default=8000, ge=200, le=32_000)
     json_mode: bool = True
     log_level: str = "INFO"
 
