@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .guard import DESCRIPTION_MAX, TITLE_MAX
+from .guard import DESCRIPTION_MAX, DESCRIPTION_MIN, TITLE_MAX
 from .models import CardResult
 
 
@@ -16,10 +16,10 @@ def to_markdown(result: CardResult) -> str:
     lines: list[str] = [
         f"# {product.name}",
         "",
-        f"**Производитель:** {product.manufacturer}",
+        f"- **Производитель:** {product.manufacturer}",
     ]
     if product.category:
-        lines.append(f"**Категория:** {product.category}")
+        lines.append(f"- **Категория:** {product.category}")
     lines.extend(
         [
             "",
@@ -70,7 +70,8 @@ def to_markdown(result: CardResult) -> str:
             f"- Проверка: {'пройдена' if meta.validation.ok else 'не пройдена'}",
             f"- Fallback: {'да' if meta.fallback_used else 'нет'}"
             + (f" ({meta.fallback_reason})" if meta.fallback_reason else ""),
-            f"- Длина описания: {len(draft.seo_description)} из {DESCRIPTION_MAX} символов",
+            f"- Длина описания: {len(draft.seo_description)} "
+            f"(норма {DESCRIPTION_MIN}–{DESCRIPTION_MAX})",
             "",
         ]
     )
