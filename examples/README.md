@@ -17,15 +17,19 @@
 | 9 | Расходомер электромагнитный | Расходомер с DN50 и выходом 4–20 мА | LLM | 895 | — | [MD](output/09-rashodomer-elektromagnitnyy.md) · [JSON](output/09-rashodomer-elektromagnitnyy.json) |
 | 10 | Уровнемер ультразвуковой | Уровнемер с питанием | LLM | 921 | — | [MD](output/10-urovnemer-ultrazvukovoy.md) · [JSON](output/10-urovnemer-ultrazvukovoy.json) |
 | 11 | Калибратор давления | Калибратор с RS-485 | LLM | 858 | — | [MD](output/11-kalibrator-davleniya.md) · [JSON](output/11-kalibrator-davleniya.json) |
-| 12 | Индикатор давления ИД-1 | Нет specs, только короткое описание | template (validation_failed) | 828 | диапазон измерений, класс точности, присоединение, диаметр корпуса, технические характеристики | [MD](output/12-indikator-davleniya-id-1.md) · [JSON](output/12-indikator-davleniya-id-1.json) |
+| 12 | Индикатор давления ИД-1 | Нет specs, только короткое описание | template (validation_failed) | 827 | диапазон измерений, класс точности, присоединение, диаметр корпуса, технические характеристики | [MD](output/12-indikator-davleniya-id-1.md) · [JSON](output/12-indikator-davleniya-id-1.json) |
 | 13 | Прибор контроля давления | Нет specs и описания — крайний случай | LLM | 893 | диапазон измерений, класс точности, присоединение, диаметр корпуса, технические характеристики, назначение и область применения | [MD](output/13-pribor-kontrolya-davleniya.md) · [JSON](output/13-pribor-kontrolya-davleniya.json) |
-| 14 | Манометр показывающий с placeholder-полями | Placeholder «—» и «н/д» отброшены | template (validation_failed) | 813 | диапазон измерений, класс точности | [MD](output/14-manometr-pokazyvayuschiy-s-placeholder-polyami.md) · [JSON](output/14-manometr-pokazyvayuschiy-s-placeholder-polyami.json) |
+| 14 | Манометр показывающий с placeholder-полями | Placeholder «—» и «н/д» отброшены | LLM | 863 | диапазон измерений, класс точности | [MD](output/14-manometr-pokazyvayuschiy-s-placeholder-polyami.md) · [JSON](output/14-manometr-pokazyvayuschiy-s-placeholder-polyami.json) |
 | 15 | Манометр с расширенным набором характеристик | 12 характеристик, длинный блок | LLM | 850 | — | [MD](output/15-manometr-s-rasshirennym-naborom-harakteristik.md) · [JSON](output/15-manometr-s-rasshirennym-naborom-harakteristik.json) |
 | 16 | Термометр с латинскими единицами | Латинские mm и M20x1.5 | LLM | 850 | — | [MD](output/16-termometr-s-latinskimi-edinitsami.md) · [JSON](output/16-termometr-s-latinskimi-edinitsami.json) |
 | 17 | Манометр с фактами только в описании | Факты в описании, specs пустые | LLM | 819 | диапазон измерений, класс точности, присоединение, диаметр корпуса, технические характеристики | [MD](output/17-manometr-s-faktami-tolko-v-opisanii.md) · [JSON](output/17-manometr-s-faktami-tolko-v-opisanii.json) |
 
 `Режим` показывает, ответила ли модель или включился безопасный шаблон
 (`template`). Даже шаблон проходит тот же guard и не добавляет факты.
+Пример 17: факты есть в свободном описании паспорта, но `specs` пустые —
+`missing_fields` в нём означает «нет в структурированных specs», а не
+«сервис не увидел описание». Пример 12 — безопасный шаблон: модель дважды
+упомянула отсутствующий диапазон измерений, guard её остановил.
 
 Воспроизвести живой прогон:
 

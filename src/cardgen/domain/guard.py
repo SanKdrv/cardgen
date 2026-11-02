@@ -393,6 +393,20 @@ def _check_attribute_numbers(
                     f"в значении этой характеристики",
                 )
 
+            allowed_pairs = facts.quantity_pairs_in(product.specs[key])
+            for number, unit in facts.quantities_in(segment):
+                token = f"{number} {unit}@{key}"
+                if (number, unit) in allowed_pairs or token in already_reported:
+                    continue
+                already_reported.add(token)
+                _add(
+                    violations,
+                    "attribute_mismatch",
+                    field,
+                    f"значение «{number} {unit}» рядом с «{key}» не встречается "
+                    "в значении этой характеристики",
+                )
+
             source_codes = facts.codes_in(product.specs[key])
             segment_compact = compact(segment)
             segment_numbers = facts.numbers_in(segment)

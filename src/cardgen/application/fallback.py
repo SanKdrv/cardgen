@@ -28,6 +28,14 @@ _SAFE_SENTENCES = (
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 _MARKDOWN_CLEAN_RE = re.compile(r"[*_`#>]+")
+_CATEGORY_SINGULAR = {
+    "манометры": "манометр",
+    "термометры": "термометр",
+    "преобразователи давления": "преобразователь давления",
+    "расходомеры": "расходомер",
+    "уровнемеры": "уровнемер",
+    "калибраторы": "калибратор",
+}
 
 
 def _plain_text(value: str) -> str:
@@ -82,6 +90,7 @@ def _build_description(product: ProductInput, missing: list[MissingField]) -> st
     name = _clean_phrase(product.name)
     manufacturer = _clean_phrase(product.manufacturer)
     category = _clean_phrase(product.category or "контрольно-измерительный прибор").lower()
+    category = _CATEGORY_SINGULAR.get(category, category)
     intro = f"{name} — {category} производства {manufacturer}."
     purpose = _first_sentences(_plain_text(product.description), 420)
     if purpose and purpose.lower() not in intro.lower():

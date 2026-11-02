@@ -240,6 +240,19 @@ def test_attribute_swap_with_existing_number_is_rejected(
     assert "attribute_mismatch" in codes(report)
 
 
+def test_unit_from_other_attribute_is_rejected(
+    partial_product: ProductInput, fixture_drafts: dict[str, Any]
+) -> None:
+    payload = copy.deepcopy(fixture_drafts[partial_product.name])
+    payload["seo_description"] += " Диапазон измерений — 100 мм."
+    report = check_draft(
+        partial_product,
+        build_facts(partial_product),
+        CardDraft.model_validate(payload),
+    )
+    assert "attribute_mismatch" in codes(report)
+
+
 def test_equivalent_latin_unit_is_allowed(
     product: ProductInput, good_draft: dict[str, Any]
 ) -> None:

@@ -177,6 +177,15 @@ def test_manometric_thermometer_is_not_a_manometer() -> None:
     assert "длина монтажной части" in required_fields_for(product)
 
 
+def test_plural_category_is_recognized() -> None:
+    product = ProductInput(
+        name="Индикатор давления",
+        manufacturer="Завод",
+        category="Манометры",
+    )
+    assert infer_category(product) == "манометр"
+
+
 def test_spec_key_synonyms() -> None:
     with_accuracy = ProductInput(
         name="Манометр",
