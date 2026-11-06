@@ -481,3 +481,6 @@ examples/
 ## Лицензия
 
 MIT — см. [`LICENSE`](LICENSE).
+---
+
+🌐 Портфолио автора: https://sankdrv.github.io/portfolio/
